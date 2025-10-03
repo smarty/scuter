@@ -9,7 +9,8 @@ import (
 type JSONRequest struct{}
 
 func (this *JSONRequest) DeserializeJSON(request *http.Request, v any) bool {
-	err := json.NewDecoder(request.Body).Decode(v) // TODO: can we use json to achieve 100% reuse?
+	// TODO: ensure the Content-Type doesn't conflict with JSON decoding.
+	err := json.NewDecoder(request.Body).Decode(v) // TODO: can we use json/v2 to achieve 100% reuse?
 	if err == nil {
 		return true
 	}
