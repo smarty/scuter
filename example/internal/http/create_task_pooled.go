@@ -68,7 +68,7 @@ func (this *CreateTaskShell) initModel() *CreateTaskModel {
 func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	model := this.initModel()
 	defer this.Put(model)
-	defer func() { this.SerializeJSON(response, model.Response) }()
+	defer func() { this.RespondResponse(response, model.Response) }()
 
 	if !this.DeserializeJSON(request, &model.Request) {
 		this.badRequest(model.Response)
@@ -90,7 +90,7 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 
 func (this *CreateTaskShell) badRequest(response *scuter.JSONResponse[*CreateTaskResponse]) {
 	response.StatusCode = http.StatusBadRequest
-	response.Content.Failures.Errors = append(response.Content.Failures.Errors, errBadRequest)
+	response.Content.Failures.Errors = append(response.Content.Failures.Errors, errBadRequestInvalidJSON)
 }
 func (this *CreateTaskShell) ok(model *CreateTaskModel) {
 	model.Response.StatusCode = http.StatusCreated
@@ -107,7 +107,7 @@ func (this *CreateTaskShell) internalServerError(response *scuter.JSONResponse[*
 }
 
 var ( // TODO: serialize these once and write bytes directly thereafter
-	errBadRequest = scuter.Error{
+	errBadRequestInvalidJSON = scuter.Error{
 		Fields:  []string{"body"},
 		Name:    "malformed-request-payload",
 		Message: "The body did not contain well-formed data and could not be properly deserialized.",

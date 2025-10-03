@@ -23,6 +23,10 @@ type Errors struct {
 	Errors []Error `json:"errors,omitempty"`
 }
 
+func NewErrors(values ...Error) *Errors {
+	return &Errors{Errors: values}
+}
+
 func (this *Errors) Append(err Error) {
 	this.Errors = append(this.Errors, err)
 }

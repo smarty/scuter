@@ -5,7 +5,10 @@ import (
 	"errors"
 )
 
-var ErrTaskTooHard = errors.New("task too hard")
+var (
+	ErrTaskTooHard  = errors.New("task too hard")
+	ErrTaskNotFound = errors.New("task not found")
+)
 
 type Handler interface {
 	Handle(context.Context, ...any)
@@ -18,6 +21,12 @@ type CreateTaskCommand struct {
 		Error error
 	}
 }
+type DeleteTaskCommand struct {
+	ID     uint64
+	Result struct {
+		Error error
+	}
+}
 
 type Application struct{}
 
@@ -26,6 +35,8 @@ func (this *Application) Handle(ctx context.Context, messages ...any) {
 		switch message := message.(type) {
 		case *CreateTaskCommand:
 			message.Result.Error = ErrTaskTooHard
+		case *DeleteTaskCommand:
+			message.Result.Error = nil
 		}
 	}
 }
