@@ -38,6 +38,7 @@ func NewCreateTaskShell(handler app.Handler) *CreateTaskShell {
 		JSON:    &scuter.JSON[*CreateTaskResponse]{},
 		Pool: scuter.NewPool(func() *CreateTaskModel {
 			result := new(CreateTaskModel)
+			result.Request = new(CreateTaskRequest)
 			result.Request.Details = "."
 			result.Command = new(app.CreateTaskCommand)
 			result.Command.Details = "."
