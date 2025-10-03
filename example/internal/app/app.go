@@ -10,6 +10,9 @@ var (
 	ErrTaskNotFound = errors.New("task not found")
 )
 
+type Logger interface {
+	Printf(format string, args ...any)
+}
 type Handler interface {
 	Handle(context.Context, ...any)
 }

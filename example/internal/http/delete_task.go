@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -11,11 +12,16 @@ import (
 
 type DeleteTaskShell struct {
 	*scuter.JSONResponder[*scuter.Errors]
+	logger  app.Logger
 	handler app.Handler
 }
 
-func NewDeleteTaskShell(handler app.Handler) *DeleteTaskShell {
-	return &DeleteTaskShell{handler: handler}
+func NewDeleteTaskShell(logger app.Logger, handler app.Handler) *DeleteTaskShell {
+	return &DeleteTaskShell{
+		logger:        logger,
+		handler:       handler,
+		JSONResponder: scuter.NewJSONResponder[*scuter.Errors](logger, json.DefaultOptionsV1()),
+	}
 }
 
 func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {

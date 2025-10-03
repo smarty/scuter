@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -28,14 +29,18 @@ type (
 // CreateTaskShell is intended to be a long-lived, concurrent-safe structure for serving all HTTP requests routed here.
 type CreateTaskShell struct {
 	*scuter.Pond[*CreateTaskModel]
-	*scuter.JSON[*CreateTaskResponse]
+	*scuter.JSONRequest
+	*scuter.JSONResponder[*CreateTaskResponse]
+	logger  app.Logger
 	handler app.Handler
 }
 
-func NewCreateTaskShell(handler app.Handler) *CreateTaskShell {
+func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell {
 	return &CreateTaskShell{
-		handler: handler,
-		JSON:    &scuter.JSON[*CreateTaskResponse]{},
+		logger:        logger,
+		handler:       handler,
+		JSONRequest:   scuter.NewJSONRequest(logger, json.DefaultOptionsV1()),
+		JSONResponder: scuter.NewJSONResponder[*CreateTaskResponse](logger, json.DefaultOptionsV1()),
 		Pond: scuter.NewPond(func() *CreateTaskModel {
 			result := new(CreateTaskModel)
 			result.Request = new(CreateTaskRequest)

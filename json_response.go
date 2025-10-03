@@ -1,7 +1,9 @@
+//go:build goexperiment.jsonv2
+
 package scuter
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 )
 
@@ -10,8 +12,14 @@ type JSONResponse[T any] struct {
 	Content    T
 }
 
-type JSONResponder[T any] struct{}
+type JSONResponder[T any] struct {
+	logger  Logger
+	options []json.Options
+}
 
+func NewJSONResponder[T any](logger Logger, options ...json.Options) *JSONResponder[T] {
+	return &JSONResponder[T]{logger: logger, options: options}
+}
 func (this *JSONResponder[T]) RespondResponse(writer http.ResponseWriter, response *JSONResponse[T]) {
 	this.Respond(writer, response.StatusCode, response.Content)
 }
@@ -19,5 +27,5 @@ func (this *JSONResponder[T]) Respond(writer http.ResponseWriter, code int, cont
 	// TODO: receive request and ensure that the Accept header doesn't conflict with a JSON response.
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writer.WriteHeader(code)
-	_ = json.NewEncoder(writer).Encode(content) // TODO: can we use json/v2 to achieve 100% reuse?
+	_ = json.MarshalWrite(writer, content, this.options...)
 }
