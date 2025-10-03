@@ -27,7 +27,7 @@ type (
 
 // CreateTaskShell is intended to be a long-lived, concurrent-safe structure for serving all HTTP requests routed here.
 type CreateTaskShell struct {
-	*scuter.Pool[*CreateTaskModel]
+	*scuter.Pond[*CreateTaskModel]
 	*scuter.JSON[*CreateTaskResponse]
 	handler app.Handler
 }
@@ -36,7 +36,7 @@ func NewCreateTaskShell(handler app.Handler) *CreateTaskShell {
 	return &CreateTaskShell{
 		handler: handler,
 		JSON:    &scuter.JSON[*CreateTaskResponse]{},
-		Pool: scuter.NewPool(func() *CreateTaskModel {
+		Pond: scuter.NewPond(func() *CreateTaskModel {
 			result := new(CreateTaskModel)
 			result.Request = new(CreateTaskRequest)
 			result.Request.Details = "."
