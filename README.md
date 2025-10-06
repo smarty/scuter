@@ -21,4 +21,4 @@ The provided example shows how to compose an entire HTTP use case, which:
 3. Interprets the command's results, and
 4. Sends an appropriate HTTP response.
 
-It also demonstrates how you might use the provided `Pool` type to minimize allocations. 
+It also demonstrates how you might use the provided `Pond` type to minimize allocations (via `*sync.Pool`). 
