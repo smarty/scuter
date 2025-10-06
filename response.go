@@ -3,8 +3,11 @@ package scuter
 import (
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
+	"mime"
 	"net/http"
+	"path"
 )
 
 // Flush applies the options on the provide ResponseWriter.
@@ -40,7 +43,7 @@ func (responseSingleton) Header(key, value string) ResponseOption {
 // ContentType sets the 'Content-Type' header.
 func (responseSingleton) ContentType(mime string) ResponseOption {
 	return func(response http.ResponseWriter) error {
-		return Response.Header(contentType, mime)(response)
+		return Response.Header(headerContentType, mime)(response)
 	}
 }
 
@@ -102,7 +105,23 @@ func (responseSingleton) BodyFromReader(r io.Reader) ResponseOption {
 	}
 }
 
+// BodyWithAttachment sets headers to deliver the provided content as a downloaded attachment
+// with Content-Type set dynamically according to the file extension.
+func (responseSingleton) BodyWithAttachment(filename string, content io.Reader) ResponseOption {
+	return func(response http.ResponseWriter) error {
+		return errors.Join(
+			Response.ContentType(mime.TypeByExtension(path.Ext(filename)))(response),
+			Response.Header(headerContentDisposition, fmt.Sprintf(attachmentDisposition, filename))(response),
+			Response.StatusCode(http.StatusOK)(response),
+			Response.BodyFromReader(content)(response),
+		)
+	}
+}
+
 var (
-	contentType     = "Content-Type"
-	jsonContentType = "application/json; charset=utf-8"
+	headerContentType        = "Content-Type"
+	headerContentDisposition = "Content-Disposition"
+
+	attachmentDisposition = `attachment; filename="%s"`
+	jsonContentType       = "application/json; charset=utf-8"
 )
