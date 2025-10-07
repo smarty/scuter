@@ -14,6 +14,6 @@ func main() {
 	application := new(app.Application)
 	http.Handle("PUT    /tasks", HTTP.NewCreateTaskShell(logger, application))
 	http.Handle("DELETE /tasks", HTTP.NewDeleteTaskShell(logger, application))
-	log.Println("listing on http://localhost:8080/")
+	logger.Println("listing on http://localhost:8080/")
 	_ = http.ListenAndServe(":8080", nil)
 }
