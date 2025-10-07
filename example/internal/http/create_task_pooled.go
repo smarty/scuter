@@ -19,16 +19,14 @@ type (
 		Details string `json:"details"`
 	}
 	CreateTaskResponse struct {
-		StatusCode int            `json:"-"`
-		ID         uint64         `json:"id,omitempty"`
-		Details    string         `json:"details,omitempty"`
-		Failures   *scuter.Errors `json:"failures,omitempty"`
+		ID      uint64 `json:"id,omitempty"`
+		Details string `json:"details,omitempty"`
 	}
 )
 
 // CreateTaskShell is intended to be a long-lived, concurrent-safe structure for serving all HTTP requests routed here.
 type CreateTaskShell struct {
-	pond    *scuter.Pond[*CreateTaskModel]
+	pool    *scuter.Pool[*CreateTaskModel]
 	logger  app.Logger
 	handler app.Handler
 }
@@ -37,7 +35,7 @@ func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell
 	return &CreateTaskShell{
 		logger:  logger,
 		handler: handler,
-		pond: scuter.NewPond(func() *CreateTaskModel {
+		pool: scuter.NewPool(func() *CreateTaskModel {
 			result := new(CreateTaskModel)
 			result.Request = new(CreateTaskRequest)
 			result.Request.Details = "."
@@ -46,40 +44,34 @@ func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell
 			result.Command.Result.ID = 42
 			result.Command.Result.Error = errors.New(".")
 			result.Response = new(CreateTaskResponse)
-			result.Response.StatusCode = http.StatusTeapot
 			result.Response.ID = 42
 			result.Response.Details = "."
-			result.Response.Failures = new(scuter.Errors)
 			return result
 		}),
 	}
 }
 func (this *CreateTaskShell) initModel() *CreateTaskModel {
-	result := this.pond.Get()
+	result := this.pool.Get()
 	result.Request.Details = ""
 	result.Command.Details = ""
 	result.Command.Result.Error = nil
 	result.Command.Result.ID = 0
-	result.Response.StatusCode = http.StatusOK
 	result.Response.ID = 0
 	result.Response.Details = ""
-	result.Response.Failures.Errors = result.Response.Failures.Errors[:0]
 	return result
 }
 
 func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	model := this.initModel()
-	defer this.pond.Put(model)
-	defer func() {
-		err := scuter.SerializeJSON(response, model.Response.StatusCode, model.Response)
-		if err != nil {
-			this.logger.Printf("[WARN] JSON serialization error: %v", err)
-		}
-	}()
-
+	defer this.pool.Put(model)
+	err := scuter.Flush(response, this.serveHTTP(request, model))
+	if err != nil {
+		this.logger.Printf("[WARN] JSON serialization error: %v", err)
+	}
+}
+func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
 	if err := scuter.DeserializeJSON(request, &model.Request); err != nil {
-		this.badRequest(model.Response)
-		return
+		return this.badRequest(model)
 	}
 
 	model.Command.Details = model.Request.Details
@@ -87,33 +79,42 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 
 	switch {
 	case model.Command.Result.Error == nil && model.Command.Result.ID > 0:
-		this.ok(model)
+		return this.ok(model)
 	case errors.Is(model.Command.Result.Error, app.ErrTaskTooHard):
-		this.taskTooHard(model.Response)
+		return this.taskTooHard(model)
 	default:
-		this.internalServerError(model.Response)
+		return this.internalServerError(model)
 	}
 }
 
-func (this *CreateTaskShell) badRequest(response *CreateTaskResponse) {
-	response.StatusCode = http.StatusBadRequest
-	response.Failures.Errors = append(response.Failures.Errors, errBadRequestInvalidJSON)
+func (this *CreateTaskShell) badRequest(model *CreateTaskModel) scuter.ResponseOption {
+	return scuter.Response.With(
+		scuter.Response.StatusCode(http.StatusBadRequest),
+		scuter.Response.JSONError(errBadRequestInvalidJSON),
+	)
 }
-func (this *CreateTaskShell) ok(model *CreateTaskModel) {
-	model.Response.StatusCode = http.StatusCreated
+func (this *CreateTaskShell) ok(model *CreateTaskModel) scuter.ResponseOption {
 	model.Response.Details = model.Request.Details
 	model.Response.ID = model.Command.Result.ID
+	return scuter.Response.With(
+		scuter.Response.StatusCode(http.StatusCreated),
+		scuter.Response.JSONBody(model.Response),
+	)
 }
-func (this *CreateTaskShell) taskTooHard(response *CreateTaskResponse) {
-	response.StatusCode = http.StatusTeapot
-	response.Failures.Errors = append(response.Failures.Errors, errTaskTooHard)
+func (this *CreateTaskShell) taskTooHard(model *CreateTaskModel) scuter.ResponseOption {
+	return scuter.Response.With(
+		scuter.Response.StatusCode(http.StatusTeapot),
+		scuter.Response.JSONError(errTaskTooHard),
+	)
 }
-func (this *CreateTaskShell) internalServerError(response *CreateTaskResponse) {
-	response.StatusCode = http.StatusInternalServerError
-	response.Failures.Errors = append(response.Failures.Errors, errInternalServerError)
+func (this *CreateTaskShell) internalServerError(model *CreateTaskModel) scuter.ResponseOption {
+	return scuter.Response.With(
+		scuter.Response.StatusCode(http.StatusInternalServerError),
+		scuter.Response.JSONError(errInternalServerError),
+	)
 }
 
-var ( // TODO: serialize these once and write bytes directly thereafter?
+var (
 	errBadRequestInvalidJSON = scuter.Error{
 		Fields:  []string{"body"},
 		Name:    "malformed-request-payload",
