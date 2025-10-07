@@ -17,7 +17,7 @@ func DeserializeJSON(request *http.Request, v any, options ...json.Options) erro
 	return err
 }
 
-// SerializeJSON is a convenience function that utilizes the Flush API defined in this package to write a response.
+// SerializeJSON is a convenience function that utilizes the Flush API defined in this package to write a JSON response.
 func SerializeJSON(writer http.ResponseWriter, code int, content any, options ...json.Options) error {
 	return Flush(writer,
 		Response.StatusCode(code),
