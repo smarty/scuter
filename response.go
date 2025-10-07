@@ -92,6 +92,7 @@ func (responseSingleton) JSONBody(v any, options ...json.Options) ResponseOption
 
 func (responseSingleton) JSONError(err Error, options ...json.Options) ResponseOption {
 	return func(config *responseConfig) {
+		config.header.Set(headerContentType, jsonContentType)
 		config.jsonErrors.Append(err)
 		config.jsonOptions = append(config.jsonOptions, options...)
 	}
