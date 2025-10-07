@@ -24,46 +24,36 @@ type (
 
 // CreateTaskShell is intended to be a long-lived, concurrent-safe structure for serving all HTTP requests routed here.
 type CreateTaskShell struct {
-	pool    *scuter.Pool[*CreateTaskModel]
+	*scuter.PooledModelFramework[*CreateTaskModel]
 	logger  app.Logger
 	handler app.Handler
 }
 
 func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell {
 	return &CreateTaskShell{
-		logger:  logger,
-		handler: handler,
-		pool: scuter.NewPool(func() *CreateTaskModel {
-			result := new(CreateTaskModel)
-			result.Request.Details = "."
-			result.Command = new(app.CreateTaskCommand)
-			result.Command.Details = "."
-			result.Command.Result.ID = 42
-			result.Command.Result.Error = errors.New(".")
-			result.Response.ID = 42
-			result.Response.Details = "."
-			return result
-		}),
+		logger:               logger,
+		handler:              handler,
+		PooledModelFramework: scuter.NewPooledModelFramework(logger, newCreateTaskModel, resetCreateTaskModel),
 	}
 }
-func (this *CreateTaskShell) initModel() *CreateTaskModel {
-	result := this.pool.Get()
+func resetCreateTaskModel(result *CreateTaskModel) {
 	result.Request.Details = ""
 	result.Command.Details = ""
 	result.Command.Result.Error = nil
 	result.Command.Result.ID = 0
 	result.Response.ID = 0
 	result.Response.Details = ""
-	return result
 }
-
-func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	model := this.initModel()
-	defer this.pool.Put(model)
-	err := scuter.Flush(response, this.serveHTTP(request, model))
-	if err != nil {
-		this.logger.Printf("[WARN] JSON serialization error: %v", err)
-	}
+func newCreateTaskModel() *CreateTaskModel {
+	result := new(CreateTaskModel)
+	result.Request.Details = "."
+	result.Command = new(app.CreateTaskCommand)
+	result.Command.Details = "."
+	result.Command.Result.ID = 42
+	result.Command.Result.Error = errors.New(".")
+	result.Response.ID = 42
+	result.Response.Details = "."
+	return result
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
 	if err := scuter.DeserializeJSON(request, &model.Request); err != nil {
