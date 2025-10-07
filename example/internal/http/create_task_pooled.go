@@ -11,16 +11,14 @@ import (
 type (
 	// CreateTaskModel is intended as a pooled resource that encapsulates all data belonging to this use case.
 	CreateTaskModel struct {
-		Request  *CreateTaskRequest
+		Request struct {
+			Details string `json:"details"`
+		}
 		Command  *app.CreateTaskCommand
-		Response *CreateTaskResponse
-	}
-	CreateTaskRequest struct {
-		Details string `json:"details"`
-	}
-	CreateTaskResponse struct {
-		ID      uint64 `json:"id,omitempty"`
-		Details string `json:"details,omitempty"`
+		Response struct {
+			ID      uint64 `json:"id,omitempty"`
+			Details string `json:"details,omitempty"`
+		}
 	}
 )
 
@@ -37,13 +35,11 @@ func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell
 		handler: handler,
 		pool: scuter.NewPool(func() *CreateTaskModel {
 			result := new(CreateTaskModel)
-			result.Request = new(CreateTaskRequest)
 			result.Request.Details = "."
 			result.Command = new(app.CreateTaskCommand)
 			result.Command.Details = "."
 			result.Command.Result.ID = 42
 			result.Command.Result.Error = errors.New(".")
-			result.Response = new(CreateTaskResponse)
 			result.Response.ID = 42
 			result.Response.Details = "."
 			return result
