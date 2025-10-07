@@ -22,20 +22,16 @@ func NewDeleteTaskShell(logger app.Logger, handler app.Handler) *DeleteTaskShell
 }
 
 func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	var statusCode int
-	var result any
-
-	defer func() {
-		err := scuter.SerializeJSON(response, statusCode, result)
-		if err != nil {
-			this.logger.Printf("[WARN] JSON serialization error: %v", err)
-		}
-	}()
-
+	statusCode, body := this.serveHTTP(request)
+	err := scuter.SerializeJSON(response, statusCode, body)
+	if err != nil {
+		this.logger.Printf("[WARN] JSON serialization error: %v", err)
+	}
+}
+func (this *DeleteTaskShell) serveHTTP(request *http.Request) (code int, body any) {
 	id, err := strconv.ParseUint(request.URL.Query().Get("id"), 10, 64)
 	if err != nil {
-		statusCode, result = http.StatusBadRequest, scuter.NewErrors(errBadRequestInvalidID)
-		return
+		return http.StatusBadRequest, scuter.NewErrors(errBadRequestInvalidID)
 	}
 
 	command := app.DeleteTaskCommand{ID: id}
@@ -43,15 +39,15 @@ func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 
 	switch {
 	case command.Result.Error == nil:
-		statusCode = http.StatusBadRequest
+		return http.StatusBadRequest, nil
 	case errors.Is(command.Result.Error, app.ErrTaskNotFound):
-		statusCode = http.StatusNotFound
+		return http.StatusNotFound, nil
 	default:
-		statusCode, result = http.StatusInternalServerError, scuter.NewErrors(errInternalServerError)
+		return http.StatusInternalServerError, scuter.NewErrors(errInternalServerError)
 	}
 }
 
-var ( // TODO: serialize these once and write bytes directly thereafter
+var (
 	errBadRequestInvalidID = scuter.Error{
 		Fields:  []string{"id"},
 		Name:    "invalid-id",
