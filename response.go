@@ -17,9 +17,7 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) (err error) 
 	defer responseConfigs.Put(config)
 	config.reset(response.Header())
 
-	for _, option := range options {
-		option(config)
-	}
+	Response.With(options...)(config)
 
 	response.WriteHeader(config.status)
 
