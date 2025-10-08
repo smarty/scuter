@@ -98,14 +98,6 @@ func (responseSingleton) JSONError(err Error, options ...json.Options) ResponseO
 	}
 }
 
-// RawJSONBody writes the provided bytes after setting a JSON Content-Type
-func (responseSingleton) RawJSONBody(b []byte) ResponseOption {
-	return func(config *responseConfig) {
-		config.header.Set(headerContentType, jsonContentType)
-		_ = copy(config.data, b)
-	}
-}
-
 // BodyFromReader copies from the provided io.Reader into the http.ResponseWriter and
 // calls Close() on the reader (if implemented), returning any and all errors.
 func (responseSingleton) BodyFromReader(r io.Reader) ResponseOption {
