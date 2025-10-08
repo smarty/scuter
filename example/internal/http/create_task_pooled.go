@@ -24,17 +24,20 @@ type (
 
 // CreateTaskShell is intended to be a long-lived, concurrent-safe structure for serving all HTTP requests routed here.
 type CreateTaskShell struct {
-	*scuter.PooledModelFramework[*CreateTaskModel]
+	pool    *scuter.Pool[*CreateTaskModel]
 	logger  app.Logger
 	handler app.Handler
 }
 
 func NewCreateTaskShell(logger app.Logger, handler app.Handler) *CreateTaskShell {
 	return &CreateTaskShell{
-		logger:               logger,
-		handler:              handler,
-		PooledModelFramework: scuter.NewPooledModelFramework(logger, newCreateTaskModel, resetCreateTaskModel),
+		pool:    scuter.NewPool(newCreateTaskModel),
+		logger:  logger,
+		handler: handler,
 	}
+}
+func newCreateTaskModel() *CreateTaskModel {
+	return &CreateTaskModel{Command: &app.CreateTaskCommand{}}
 }
 func resetCreateTaskModel(result *CreateTaskModel) {
 	result.Request.Details = ""
@@ -44,16 +47,14 @@ func resetCreateTaskModel(result *CreateTaskModel) {
 	result.Response.ID = 0
 	result.Response.Details = ""
 }
-func newCreateTaskModel() *CreateTaskModel {
-	result := new(CreateTaskModel)
-	result.Request.Details = "."
-	result.Command = new(app.CreateTaskCommand)
-	result.Command.Details = "."
-	result.Command.Result.ID = 42
-	result.Command.Result.Error = errors.New(".")
-	result.Response.ID = 42
-	result.Response.Details = "."
-	return result
+func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	model := this.pool.Get()
+	defer this.pool.Put(model)
+	resetCreateTaskModel(model)
+	err := scuter.Flush(response, this.serveHTTP(request, model))
+	if err != nil {
+		this.logger.Printf("error when sending response: %v", err)
+	}
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
 	if err := scuter.DeserializeJSON(request, &model.Request); err != nil {

@@ -10,16 +10,20 @@ import (
 )
 
 type DeleteTaskShell struct {
-	*scuter.Framework
 	logger  app.Logger
 	handler app.Handler
 }
 
 func NewDeleteTaskShell(logger app.Logger, handler app.Handler) *DeleteTaskShell {
 	return &DeleteTaskShell{
-		Framework: scuter.NewFramework(logger),
-		logger:    logger,
-		handler:   handler,
+		logger:  logger,
+		handler: handler,
+	}
+}
+func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	err := scuter.Flush(response, this.serveHTTP(request))
+	if err != nil {
+		this.logger.Printf("error when sending response: %v", err)
 	}
 }
 func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOption {
