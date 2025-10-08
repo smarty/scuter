@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"net/http"
 
@@ -57,7 +58,8 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	}
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
-	if err := scuter.DeserializeJSON(request, &model.Request); err != nil {
+	var v any = &model.Request
+	if err := json.UnmarshalRead(request.Body, &v); err != nil {
 		return this.badRequest(model)
 	}
 

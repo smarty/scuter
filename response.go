@@ -1,6 +1,7 @@
 package scuter
 
 import (
+	"bytes"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -29,12 +30,12 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) (err error) 
 		return json.MarshalWrite(response, config.dataJSON)
 	}
 	if config.dataReader != nil {
-		return config.writeFromReader(response)
+		return config.writeFromReader(response, config.dataReader)
 	}
-	if len(config.data) > 0 {
-		_, err = response.Write(config.data)
+	if config.data.Len() > 0 {
+		return config.writeFromReader(response, &config.data)
 	}
-	return err
+	return nil
 }
 
 // ResponseOption is a callback func with an opportunity to call methods on http.ResponseWriter.
@@ -78,7 +79,9 @@ func (responseSingleton) StatusCode(code int) ResponseOption {
 
 // BytesBody writes the bytes to the ResponseWriter and returns any error.
 func (responseSingleton) BytesBody(b []byte) ResponseOption {
-	return func(config *responseConfig) { _ = copy(config.data, b) }
+	return func(config *responseConfig) {
+		_, _ = config.data.Write(b)
+	}
 }
 
 // JSONBody uses json.MarshalWrite to serialize v to the ResponseWriter using the provided options and returning any error.
@@ -127,27 +130,27 @@ type responseConfig struct {
 	header      http.Header
 	status      int
 	dataReader  io.Reader
-	data        []byte
+	data        bytes.Buffer
 	dataJSON    any
 	jsonErrors  *Errors
 	jsonOptions []json.Options
 }
 
-func (this *responseConfig) writeFromReader(response http.ResponseWriter) (err error) {
+func (this *responseConfig) writeFromReader(response http.ResponseWriter, reader io.Reader) (err error) {
 	defer func() {
-		closer, ok := this.dataReader.(io.Closer)
+		closer, ok := reader.(io.Closer)
 		if ok {
 			err = errors.Join(err, closer.Close())
 		}
 	}()
-	_, err = io.Copy(response, this.dataReader)
+	_, err = io.Copy(response, reader)
 	return err
 }
 
 func (this *responseConfig) reset(header http.Header) {
 	this.header = header
 	this.status = http.StatusOK
-	this.data = this.data[:0]
+	this.data.Reset()
 	this.dataJSON = nil
 	this.dataReader = nil
 	this.jsonErrors.Errors = this.jsonErrors.Errors[:0]
@@ -155,7 +158,7 @@ func (this *responseConfig) reset(header http.Header) {
 }
 
 var responseConfigs = NewPool[*responseConfig](func() *responseConfig {
-	config := &responseConfig{jsonErrors: &Errors{}}
+	config := &responseConfig{jsonErrors: NewErrors()}
 	config.reset(nil)
 	return config
 })
