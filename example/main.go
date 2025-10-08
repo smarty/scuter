@@ -10,10 +10,11 @@ import (
 )
 
 func main() {
+	address := "localhost:8080"
 	logger := log.New(os.Stderr, "", log.LstdFlags)
-	application := new(app.Application)
-	http.Handle("PUT    /tasks", HTTP.NewCreateTaskShell(logger, application))
-	http.Handle("DELETE /tasks", HTTP.NewDeleteTaskShell(logger, application))
-	logger.Println("listing on http://localhost:8080/")
-	_ = http.ListenAndServe(":8080", nil)
+	logger.Printf("listing on http://%s", address)
+	err := http.ListenAndServe(address, HTTP.New(logger, new(app.Application)))
+	if err != nil {
+		logger.Panic(err)
+	}
 }
