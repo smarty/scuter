@@ -52,14 +52,11 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	model := this.pool.Get()
 	defer this.pool.Put(model)
 	resetCreateTaskModel(model)
-	err := scuter.Flush(response, this.serveHTTP(request, model))
-	if err != nil {
-		this.logger.Printf("error when sending response: %v", err)
-	}
+	_ = scuter.Flush(response, this.serveHTTP(request, model))
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
 	if err := json.UnmarshalRead(request.Body, &model.Request); err != nil {
-		return this.badRequest(model)
+		return errResponse(http.StatusBadRequest, errBadRequestInvalidJSON)
 	}
 
 	model.Command.Details = model.Request.Details
@@ -69,18 +66,12 @@ func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskM
 	case model.Command.Result.Error == nil && model.Command.Result.ID > 0:
 		return this.ok(model)
 	case errors.Is(model.Command.Result.Error, app.ErrTaskTooHard):
-		return this.taskTooHard(model)
+		return errResponse(http.StatusTeapot, errTaskTooHard)
 	default:
-		return this.internalServerError(model)
+		return errResponse(http.StatusInternalServerError, errInternalServerError)
 	}
 }
 
-func (this *CreateTaskShell) badRequest(model *CreateTaskModel) scuter.ResponseOption {
-	return scuter.Response.With(
-		scuter.Response.StatusCode(http.StatusBadRequest),
-		scuter.Response.JSONError(errBadRequestInvalidJSON),
-	)
-}
 func (this *CreateTaskShell) ok(model *CreateTaskModel) scuter.ResponseOption {
 	model.Response.Details = model.Request.Details
 	model.Response.ID = model.Command.Result.ID
@@ -89,34 +80,3 @@ func (this *CreateTaskShell) ok(model *CreateTaskModel) scuter.ResponseOption {
 		scuter.Response.JSONBody(model.Response),
 	)
 }
-func (this *CreateTaskShell) taskTooHard(model *CreateTaskModel) scuter.ResponseOption {
-	return scuter.Response.With(
-		scuter.Response.StatusCode(http.StatusTeapot),
-		scuter.Response.JSONError(errTaskTooHard),
-	)
-}
-func (this *CreateTaskShell) internalServerError(model *CreateTaskModel) scuter.ResponseOption {
-	return scuter.Response.With(
-		scuter.Response.StatusCode(http.StatusInternalServerError),
-		scuter.Response.JSONError(errInternalServerError),
-	)
-}
-
-var (
-	errBadRequestInvalidJSON = scuter.Error{
-		Fields:  []string{"body"},
-		Name:    "malformed-request-payload",
-		Message: "The body did not contain well-formed data and could not be properly deserialized.",
-	}
-	errTaskTooHard = scuter.Error{
-		Fields:  []string{"details"},
-		ID:      12345,
-		Name:    "task-too-hard",
-		Message: "the specified task was deemed overly difficult",
-	}
-	errInternalServerError = scuter.Error{
-		ID:      54321,
-		Name:    "internal-server-error",
-		Message: "Internal Server Error",
-	}
-)
