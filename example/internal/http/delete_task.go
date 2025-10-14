@@ -24,7 +24,8 @@ func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	_ = scuter.Flush(response, this.serveHTTP(request))
 }
 func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOption {
-	id, err := strconv.ParseUint(request.URL.Query().Get("id"), 10, 64)
+	query := request.URL.Query()
+	id, err := strconv.ParseUint(query.Get("id"), 10, 64)
 	if err != nil {
 		return this.badRequest()
 	}
