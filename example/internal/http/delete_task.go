@@ -21,10 +21,7 @@ func NewDeleteTaskShell(logger app.Logger, handler app.Handler) *DeleteTaskShell
 	}
 }
 func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	err := scuter.Flush(response, this.serveHTTP(request))
-	if err != nil {
-		this.logger.Printf("error when sending response: %v", err)
-	}
+	_ = scuter.Flush(response, this.serveHTTP(request))
 }
 func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOption {
 	id, err := strconv.ParseUint(request.URL.Query().Get("id"), 10, 64)
