@@ -58,8 +58,7 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	}
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
-	var v any = &model.Request
-	if err := json.UnmarshalRead(request.Body, &v); err != nil {
+	if err := json.UnmarshalRead(request.Body, &model.Request); err != nil {
 		return this.badRequest(model)
 	}
 
