@@ -1,7 +1,14 @@
 #!/usr/bin/make -f
 
 test: fmt
-	GOEXPERIMENT=jsonv2 go test -race -cover -timeout=1s -count=1 ./...
+	GOEXPERIMENT=jsonv2 GORACE="atexit_sleep_ms=50" go test -count=1 -timeout=1s -short -race -covermode=atomic ./...
 
 fmt:
-	@go version && go fmt ./... && go mod tidy
+	go fmt ./... && go mod tidy
+
+compile:
+	go build ./...
+
+build: test compile
+
+.PHONY: test fmt compile build

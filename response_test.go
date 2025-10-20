@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mdw-go/scuter/internal/should"
+	"github.com/smarty/scuter/internal/should"
 )
 
 func TestHeader(t *testing.T) {

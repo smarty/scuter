@@ -1,3 +1,3 @@
-module github.com/mdw-go/scuter
+module github.com/smarty/scuter
 
 go 1.25

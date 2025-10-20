@@ -3,7 +3,7 @@ package scuter
 import (
 	"testing"
 
-	"github.com/mdw-go/scuter/internal/should"
+	"github.com/smarty/scuter/internal/should"
 )
 
 func TestError(t *testing.T) {

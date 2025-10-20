@@ -1,6 +1,6 @@
 package http
 
-import "github.com/mdw-go/scuter"
+import "github.com/smarty/scuter"
 
 func errResponse(code int, err scuter.Error) scuter.ResponseOption {
 	return scuter.Response.With(
