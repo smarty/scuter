@@ -7,7 +7,7 @@ fmt:
 	go fmt ./... && go mod tidy
 
 compile:
-	go build ./...
+	GOEXPERIMENT=jsonv2 go build ./...
 
 build: test compile
 
