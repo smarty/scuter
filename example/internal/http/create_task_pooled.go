@@ -4,6 +4,8 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/smarty/scuter"
 	"github.com/smarty/scuter/example/internal/app"
@@ -13,7 +15,8 @@ type (
 	// CreateTaskModel is intended as a pooled resource that encapsulates all data belonging to this use case.
 	CreateTaskModel struct {
 		Request struct {
-			Details string `json:"details"`
+			DueDate time.Time `json:"due_date"`
+			Details string    `json:"details"`
 		}
 		Command  *app.CreateTaskCommand
 		Response struct {
@@ -54,9 +57,19 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	resetCreateTaskModel(model)
 	_ = scuter.Flush(response, this.serveHTTP(request, model))
 }
-func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) scuter.ResponseOption {
+func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) (result scuter.ResponseOption) {
 	if err := json.UnmarshalRead(request.Body, &model.Request); err != nil {
 		return errResponse(http.StatusBadRequest, errBadRequestInvalidJSON)
+	}
+	if model.Request.DueDate.IsZero() {
+		result = scuter.Response.With(result, scuter.Response.JSONError(errMissingDueDate))
+	}
+	model.Request.Details = strings.TrimSpace(model.Request.Details)
+	if model.Request.Details == "" {
+		result = scuter.Response.With(result, scuter.Response.JSONError(errMissingDetails))
+	}
+	if result != nil {
+		return scuter.Response.With(result, scuter.Response.StatusCode(http.StatusUnprocessableEntity))
 	}
 
 	model.Command.Details = model.Request.Details

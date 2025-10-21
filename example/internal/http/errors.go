@@ -20,6 +20,16 @@ var (
 		Name:    "malformed-request-payload",
 		Message: "The body did not contain well-formed data and could not be properly deserialized.",
 	}
+	errMissingDueDate = scuter.Error{
+		Fields:  []string{"due_date"},
+		Name:    "missing-due-date",
+		Message: "The due date is required.",
+	}
+	errMissingDetails = scuter.Error{
+		Fields:  []string{"details"},
+		Name:    "missing-details",
+		Message: "The details of the task are required.",
+	}
 	errTaskTooHard = scuter.Error{
 		Fields:  []string{"details"},
 		ID:      12345,
