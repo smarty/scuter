@@ -26,7 +26,7 @@ func (this *DeleteTaskFixture) Setup() {
 }
 
 func (this *DeleteTaskFixture) TestInvalidID() {
-	this.assertFullHTTP(http.MethodDelete, "/tasks",
+	this.assertFullHTTP("DELETE /tasks",
 		scuter.Request.With(
 			scuter.Request.Query("id", "INVALID"),
 		),
@@ -42,7 +42,7 @@ func (this *DeleteTaskFixture) TestInvalidID() {
 }
 func (this *DeleteTaskFixture) TestUnrecognizedApplicationError() {
 	this.app = func(v any) { v.(*app.DeleteTaskCommand).Result.Error = errors.New("boink") }
-	this.assertFullHTTP(http.MethodDelete, "/tasks",
+	this.assertFullHTTP("DELETE /tasks",
 		scuter.Request.Query("id", "42"),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusInternalServerError),
@@ -56,7 +56,7 @@ func (this *DeleteTaskFixture) TestUnrecognizedApplicationError() {
 }
 func (this *DeleteTaskFixture) TestTaskNotFound() {
 	this.app = func(v any) { v.(*app.DeleteTaskCommand).Result.Error = app.ErrTaskNotFound }
-	this.assertFullHTTP(http.MethodDelete, "/tasks",
+	this.assertFullHTTP("DELETE /tasks",
 		scuter.Request.Query("id", "42"),
 		scuter.Response.StatusCode(http.StatusOK),
 	)
@@ -67,7 +67,7 @@ func (this *DeleteTaskFixture) TestSuccess() {
 		this.So(command.ID, should.Equal, 42)
 		command.Result.Error = nil
 	}
-	this.assertFullHTTP(http.MethodDelete, "/tasks",
+	this.assertFullHTTP("DELETE /tasks",
 		scuter.Request.Query("id", "42"),
 		scuter.Response.StatusCode(http.StatusOK),
 	)

@@ -61,7 +61,9 @@ func (this *HTTPFixture) serve(request *http.Request) *httptest.ResponseRecorder
 	}
 	return actual
 }
-func (this *HTTPFixture) assertFullHTTP(method, target string, req scuter.RequestOption, res scuter.ResponseOption) {
+func (this *HTTPFixture) assertFullHTTP(route string, req scuter.RequestOption, res scuter.ResponseOption) {
+	fields := strings.Fields(route)
+	method, target := fields[0], fields[1]
 	actual := this.serve(scuter.NewTestRequest(this.ctx, method, target, req))
 	expected := httptest.NewRecorder()
 	scuter.Flush(expected, res)

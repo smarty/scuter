@@ -26,7 +26,7 @@ func (this *CreateTaskFixture) Setup() {
 }
 
 func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
-	this.assertFullHTTP(http.MethodPut, "/tasks",
+	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.Body(strings.NewReader("invalid json")),
 		),
@@ -41,7 +41,7 @@ func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
 	)
 }
 func (this *CreateTaskFixture) TestInvalidFields() {
-	this.assertFullHTTP(http.MethodPut, "/tasks",
+	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(nil),
 		),
@@ -63,7 +63,7 @@ func (this *CreateTaskFixture) TestInvalidFields() {
 func (this *CreateTaskFixture) TestNoID() {
 	this.app = func(v any) { v.(*app.CreateTaskCommand).Result.ID = 0 }
 
-	this.assertFullHTTP(http.MethodPut, "/tasks",
+	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
@@ -83,7 +83,7 @@ func (this *CreateTaskFixture) TestNoID() {
 func (this *CreateTaskFixture) TestTaskTooHard() {
 	this.app = func(v any) { v.(*app.CreateTaskCommand).Result.Error = app.ErrTaskTooHard }
 
-	this.assertFullHTTP(http.MethodPut, "/tasks",
+	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
@@ -108,7 +108,7 @@ func (this *CreateTaskFixture) TestHappyPath() {
 		command.Result.ID = 42
 	}
 
-	this.assertFullHTTP(http.MethodPut, "/tasks",
+	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
@@ -117,7 +117,10 @@ func (this *CreateTaskFixture) TestHappyPath() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusCreated),
-			scuter.Response.JSONBody(map[string]any{"details": "Details", "id": 42}),
+			scuter.Response.JSONBody(map[string]any{
+				"id":      42,
+				"details": "Details",
+			}),
 		),
 	)
 }
