@@ -11,12 +11,15 @@ import (
 )
 
 // Flush applies the options, which may be supplied in any order, to the provide ResponseWriter.
+// IMPORTANT: errors that occur from IO operations involving the response body are silently ignored.
 func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	config := responseConfigs.Get()
 	defer responseConfigs.Put(config)
 	config.reset(response.Header())
 	Response.With(options...)(config)
+
 	response.WriteHeader(config.status)
+
 	if len(config.jsonErrors.Errors) > 0 {
 		_ = json.MarshalWrite(response, config.jsonErrors)
 	} else if config.dataJSON != nil {
@@ -28,7 +31,7 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	}
 }
 
-// ResponseOption is a callback func with an opportunity to call methods on http.ResponseWriter.
+// ResponseOption is a callback func with an opportunity to modify the *responseConfig.
 type ResponseOption func(*responseConfig)
 
 // Response is the 'namespace' for all methods that return a ResponseOption.

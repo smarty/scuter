@@ -63,8 +63,8 @@ func (this *HTTPFixture) assertHTTP(request *http.Request, responseOptions ...sc
 
 func (this *HTTPFixture) TestCreateTask_InvalidJSONRequestBody() {
 	this.assertHTTP(
-		NewRequest(this.ctx, http.MethodPut, "/tasks",
-			RequestOptions.Body(strings.NewReader("not valid json")),
+		scuter.NewTestRequest(this.ctx, http.MethodPut, "/tasks",
+			scuter.Request.Body(strings.NewReader("not valid json")),
 		),
 		scuter.Response.StatusCode(http.StatusBadRequest),
 		scuter.Response.JSONError(scuter.Error{
@@ -77,8 +77,8 @@ func (this *HTTPFixture) TestCreateTask_InvalidJSONRequestBody() {
 func (this *HTTPFixture) TestCreateTask_InvalidFields() {
 	var empty CreateTaskModel
 	this.assertHTTP(
-		NewRequest(this.ctx, http.MethodPut, "/tasks",
-			RequestOptions.JSONBody(empty.Request),
+		scuter.NewTestRequest(this.ctx, http.MethodPut, "/tasks",
+			scuter.Request.JSONBody(empty.Request),
 		),
 		scuter.Response.StatusCode(http.StatusUnprocessableEntity),
 		scuter.Response.JSONError(scuter.Error{
