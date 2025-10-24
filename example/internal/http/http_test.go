@@ -28,15 +28,15 @@ func (this *HTTPFixture) Handle(ctx context.Context, messages ...any) {
 		_ = msg // TODO
 	}
 }
-
 func (this *HTTPFixture) Setup() {
 	this.ctx = context.WithValue(this.T().Context(), "testing", this.Name())
 }
 
 func (this *HTTPFixture) assertHTTP(request *http.Request, responseOptions ...scuter.ResponseOption) {
 	if testing.Verbose() {
-		requestDump, _ := httputil.DumpRequest(request, true)
-		for _, line := range strings.Split(string(requestDump), "\n") {
+		requestDump, err := httputil.DumpRequest(request, true)
+		this.So(err, should.BeNil)
+		for line := range strings.SplitSeq(string(requestDump), "\n") {
 			this.Println("> ", line)
 		}
 	}
@@ -46,8 +46,10 @@ func (this *HTTPFixture) assertHTTP(request *http.Request, responseOptions ...sc
 	router.ServeHTTP(actual, request)
 
 	if testing.Verbose() {
-		responseDump, _ := httputil.DumpResponse(actual.Result(), true)
-		for _, line := range strings.Split(string(responseDump), "\n") {
+		this.Println()
+		responseDump, err := httputil.DumpResponse(actual.Result(), true)
+		this.So(err, should.BeNil)
+		for line := range strings.SplitSeq(string(responseDump), "\n") {
 			this.Println("< ", line)
 		}
 	}
