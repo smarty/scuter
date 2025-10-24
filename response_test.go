@@ -10,37 +10,37 @@ import (
 	"github.com/smarty/scuter/internal/should"
 )
 
-func TestHeader(t *testing.T) {
+func TestResponseHeader(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.Header("Content-Type", "testing-content-type"))
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "testing-content-type")
 }
-func TestContentType(t *testing.T) {
+func TestResponseContentType(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.ContentType("testing-content-type"))
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "testing-content-type")
 }
-func TestJSONContentType(t *testing.T) {
+func TestResponseJSONContentType(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.JSONContentType())
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "application/json; charset=utf-8")
 }
-func TestStatusCode(t *testing.T) {
+func TestResponseStatusCode(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.StatusCode(http.StatusTeapot))
 	should.So(t, recorder.Code, should.Equal, http.StatusTeapot)
 }
-func TestBytesBody(t *testing.T) {
+func TestResponseBytesBody(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.BytesBody([]byte("Hello, world!")))
 	should.So(t, recorder.Body.String(), should.Equal, "Hello, world!")
 }
-func TestJSONBody(t *testing.T) {
+func TestResponseJSONBody(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.JSONBody([]string{"a", "b", "c"}))
 	should.So(t, recorder.Body.String(), should.Equal, `["a","b","c"]`)
 }
-func TestJSONError(t *testing.T) {
+func TestResponseJSONError(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.JSONError(Error{
 		Fields:  []string{"field-1", "field-2"},
@@ -52,12 +52,12 @@ func TestJSONError(t *testing.T) {
 		`{"errors":[{"fields":["field-1","field-2"],"id":42,"name":"testing-error","message":"testing error message"}]}`,
 	)
 }
-func TestBodyFromReader(t *testing.T) {
+func TestResponseBodyFromReader(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.BodyFromReader(strings.NewReader("Hello, world!")))
 	should.So(t, recorder.Body.String(), should.Equal, "Hello, world!")
 }
-func TestBodyWithAttachment(t *testing.T) {
+func TestResponseBodyWithAttachment(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	Flush(recorder, Response.BodyWithAttachment("filename.txt", strings.NewReader("Hello, world!")))
@@ -66,7 +66,7 @@ func TestBodyWithAttachment(t *testing.T) {
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "text/plain; charset=utf-8")
 	should.So(t, recorder.Body.String(), should.Equal, "Hello, world!")
 }
-func TestWith(t *testing.T) {
+func TestResponseWith(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	Flush(recorder, Response.With(Response.StatusCode(http.StatusTeapot), Response.JSONContentType()))
@@ -74,7 +74,7 @@ func TestWith(t *testing.T) {
 	should.So(t, recorder.Code, should.Equal, http.StatusTeapot)
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "application/json; charset=utf-8")
 }
-func TestBodyFromReadCloser_CloseCalled(t *testing.T) {
+func TestResponseBodyFromReadCloser_CloseCalled(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	readCloser := &Closer{
 		Reader: &Reader{
