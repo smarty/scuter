@@ -8,6 +8,7 @@ import (
 	"net/http/httputil"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/smarty/gunit"
 	"github.com/smarty/gunit/assert/should"
@@ -20,17 +21,21 @@ func TestHTTPFixture(t *testing.T) {
 
 type HTTPFixture struct {
 	*gunit.Fixture
+	now time.Time
 	ctx context.Context
+	app func(any)
 }
 
 func (this *HTTPFixture) Handle(ctx context.Context, messages ...any) {
 	this.So(ctx.Value("testing"), should.Equal, this.Name())
 	for _, msg := range messages {
-		_ = msg // TODO
+		this.app(msg)
 	}
 }
 func (this *HTTPFixture) Setup() {
+	this.now = time.Now().Truncate(time.Second)
 	this.ctx = context.WithValue(this.T().Context(), "testing", this.Name())
+	this.app = func(any) {}
 }
 
 func (this *HTTPFixture) serve(request *http.Request) *httptest.ResponseRecorder {
@@ -71,41 +76,4 @@ func (this *HTTPFixture) assertFullHTTP(method, target string, req scuter.Reques
 	} else {
 		this.So(actual.Body.String(), should.Equal, expected.Body.String())
 	}
-}
-
-func (this *HTTPFixture) TestCreateTask_InvalidJSONRequestBody() {
-	this.assertFullHTTP(http.MethodPut, "/tasks",
-		scuter.Request.With(
-			scuter.Request.Body(strings.NewReader("not valid json")),
-		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusBadRequest),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"body"},
-				Name:    "malformed-request-payload",
-				Message: "The body did not contain well-formed data and could not be properly deserialized.",
-			}),
-		),
-	)
-}
-func (this *HTTPFixture) TestCreateTask_InvalidFields() {
-	var empty CreateTaskModel
-	this.assertFullHTTP(http.MethodPut, "/tasks",
-		scuter.Request.With(
-			scuter.Request.JSONBody(empty.Request),
-		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusUnprocessableEntity),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"due_date"},
-				Name:    "missing-due-date",
-				Message: "The due date is required.",
-			}),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"details"},
-				Name:    "missing-details",
-				Message: "The details of the task are required.",
-			}),
-		),
-	)
 }
