@@ -3,7 +3,6 @@ package scuter
 import (
 	"bytes"
 	"encoding/json/v2"
-	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -12,28 +11,21 @@ import (
 )
 
 // Flush applies the options, which may be supplied in any order, to the provide ResponseWriter.
-func Flush(response http.ResponseWriter, options ...ResponseOption) (err error) {
+func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	config := responseConfigs.Get()
 	defer responseConfigs.Put(config)
 	config.reset(response.Header())
-
 	Response.With(options...)(config)
-
 	response.WriteHeader(config.status)
-
 	if len(config.jsonErrors.Errors) > 0 {
-		return json.MarshalWrite(response, config.jsonErrors)
+		_ = json.MarshalWrite(response, config.jsonErrors)
+	} else if config.dataJSON != nil {
+		_ = json.MarshalWrite(response, config.dataJSON)
+	} else if config.dataReader != nil {
+		config.writeFromReader(response, config.dataReader)
+	} else if config.data.Len() > 0 {
+		config.writeFromReader(response, &config.data)
 	}
-	if config.dataJSON != nil {
-		return json.MarshalWrite(response, config.dataJSON)
-	}
-	if config.dataReader != nil {
-		return config.writeFromReader(response, config.dataReader)
-	}
-	if config.data.Len() > 0 {
-		return config.writeFromReader(response, &config.data)
-	}
-	return nil
 }
 
 // ResponseOption is a callback func with an opportunity to call methods on http.ResponseWriter.
@@ -134,15 +126,14 @@ type responseConfig struct {
 	jsonOptions []json.Options
 }
 
-func (this *responseConfig) writeFromReader(response http.ResponseWriter, reader io.Reader) (err error) {
+func (this *responseConfig) writeFromReader(response http.ResponseWriter, reader io.Reader) {
 	defer func() {
 		closer, ok := reader.(io.Closer)
 		if ok {
-			err = errors.Join(err, closer.Close())
+			_ = closer.Close()
 		}
 	}()
-	_, err = io.Copy(response, reader)
-	return err
+	_, _ = io.Copy(response, reader)
 }
 
 func (this *responseConfig) reset(header http.Header) {

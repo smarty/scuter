@@ -22,7 +22,7 @@ func NewDeleteTaskShell(logger app.Logger, handler app.Handler) *DeleteTaskShell
 }
 
 func (this *DeleteTaskShell) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	_ = scuter.Flush(response, this.serveHTTP(request))
+	scuter.Flush(response, this.serveHTTP(request))
 }
 func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOption {
 	query := request.URL.Query()

@@ -55,7 +55,7 @@ func (this *HTTPFixture) assertHTTP(request *http.Request, responseOptions ...sc
 	}
 
 	expected := httptest.NewRecorder()
-	_ = scuter.Flush(expected, responseOptions...)
+	scuter.Flush(expected, responseOptions...)
 	this.So(actual.Code, should.Equal, expected.Code)
 	this.So(actual.Header(), should.Equal, expected.Header())
 	this.So(actual.Body.String(), should.Equal, expected.Body.String())

@@ -55,7 +55,7 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	model := this.pool.Get()
 	defer this.pool.Put(model)
 	resetCreateTaskModel(model)
-	_ = scuter.Flush(response, this.serveHTTP(request, model))
+	scuter.Flush(response, this.serveHTTP(request, model))
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) (result scuter.ResponseOption) {
 	if err := json.UnmarshalRead(request.Body, &model.Request); err != nil {
