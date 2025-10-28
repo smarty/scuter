@@ -32,11 +32,7 @@ func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusBadRequest),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"body"},
-				Name:    "malformed-request-payload",
-				Message: "The body did not contain well-formed data and could not be properly deserialized.",
-			}),
+			scuter.Response.JSONError(testErrBadRequestInvalidJSON),
 		),
 	)
 }
@@ -47,16 +43,8 @@ func (this *CreateTaskFixture) TestInvalidFields() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusUnprocessableEntity),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"due_date"},
-				Name:    "missing-due-date",
-				Message: "The due date is required.",
-			}),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"details"},
-				Name:    "missing-details",
-				Message: "The details of the task are required.",
-			}),
+			scuter.Response.JSONError(testErrMissingDueDate),
+			scuter.Response.JSONError(testErrMissingDetails),
 		),
 	)
 }
@@ -72,11 +60,7 @@ func (this *CreateTaskFixture) TestNoID() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusInternalServerError),
-			scuter.Response.JSONError(scuter.Error{
-				ID:      54321,
-				Name:    "internal-server-error",
-				Message: "Internal Server Error",
-			}),
+			scuter.Response.JSONError(testErrInternalServerError),
 		),
 	)
 }
@@ -92,12 +76,7 @@ func (this *CreateTaskFixture) TestTaskTooHard() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusTeapot),
-			scuter.Response.JSONError(scuter.Error{
-				ID:      12345,
-				Fields:  []string{"details"},
-				Name:    "task-too-hard",
-				Message: "the specified task was deemed overly difficult",
-			}),
+			scuter.Response.JSONError(testErrTaskTooHard),
 		),
 	)
 }

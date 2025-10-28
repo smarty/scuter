@@ -32,11 +32,7 @@ func (this *DeleteTaskFixture) TestInvalidID() {
 		),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusBadRequest),
-			scuter.Response.JSONError(scuter.Error{
-				Fields:  []string{"id"},
-				Name:    "invalid-id",
-				Message: "The id was invalid or not supplied.",
-			}),
+			scuter.Response.JSONError(testErrBadRequestInvalidID),
 		),
 	)
 }
@@ -46,11 +42,7 @@ func (this *DeleteTaskFixture) TestUnrecognizedApplicationError() {
 		scuter.Request.Query("id", "42"),
 		scuter.Response.With(
 			scuter.Response.StatusCode(http.StatusInternalServerError),
-			scuter.Response.JSONError(scuter.Error{
-				ID:      54321,
-				Name:    "internal-server-error",
-				Message: "Internal Server Error",
-			}),
+			scuter.Response.JSONError(testErrInternalServerError),
 		),
 	)
 }
