@@ -2,12 +2,51 @@ package scuter
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/smarty/scuter/internal/should"
 )
 
+func TestReadJSONRequestBody_MissingContentType(t *testing.T) {
+	request := NewTestRequest(t.Context(), "PUT", "/")
+	v := make(map[string]any)
+
+	actual, ok := ReadJSONRequestBody(request, v)
+
+	should.So(t, ok, should.BeFalse)
+	assertResponseEqual(t, Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), actual)
+}
+func TestReadJSONRequestBody_MalformedJSON(t *testing.T) {
+	request := NewTestRequest(t.Context(), "PUT", "/", Request.JSONBody(`invalid`))
+	v := make(map[string]any)
+
+	actual, ok := ReadJSONRequestBody(request, v)
+
+	should.So(t, ok, should.BeFalse)
+	assertResponseEqual(t, Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), actual)
+}
+func TestReadJSONRequestBody(t *testing.T) {
+	request := NewTestRequest(t.Context(), "PUT", "/", Request.JSONBody(map[string]any{"a": 1, "b": 2}))
+	v := make(map[string]any)
+
+	actual, ok := ReadJSONRequestBody(request, v)
+
+	should.So(t, ok, should.BeTrue)
+	should.So(t, actual, should.BeNil)
+}
+func assertResponseEqual(t *testing.T, expected, actual ResponseOption) {
+	EXPECTED := httptest.NewRecorder()
+	ACTUAL := httptest.NewRecorder()
+
+	Flush(EXPECTED, expected)
+	Flush(ACTUAL, actual)
+
+	should.So(t, ACTUAL.Code, should.Equal, EXPECTED.Code)
+	should.So(t, ACTUAL.Header(), should.Equal, EXPECTED.Header())
+	should.So(t, ACTUAL.Body.String(), should.Equal, EXPECTED.Body.String())
+}
 func TestReadUint64Header(t *testing.T) {
 	should.So(t, ReadUint64Header(http.Header{"a": []string{"1"}}, "a"), should.Equal, uint64(1))
 	should.So(t, ReadUint64Header(http.Header{"a": []string{"NaN"}}, "a"), should.Equal, uint64(0))

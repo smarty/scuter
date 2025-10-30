@@ -57,9 +57,21 @@ func (negated) Equal(actual any, expected ...any) error {
 	}
 	return fmt.Errorf("\nExpected:     %s\nto not equal: %s\n(but it did)", format(expected[0]), format(actual))
 }
-func BeTrue(actual any, _ ...any) error          { return Equal(actual, true) }
-func BeFalse(actual any, _ ...any) error         { return Equal(actual, false) }
-func BeNil(actual any, _ ...any) error           { return Equal(actual, nil) }
+func BeTrue(actual any, _ ...any) error  { return Equal(actual, true) }
+func BeFalse(actual any, _ ...any) error { return Equal(actual, false) }
+func BeNil(actual any, _ ...any) error {
+	if actual == nil {
+		return nil
+	}
+	v := reflect.ValueOf(actual)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		if v.IsNil() {
+			return nil
+		}
+	}
+	return fmt.Errorf("\nExpected nil, but got %#v", actual)
+}
 func (negated) BeNil(actual any, _ ...any) error { return NOT.Equal(actual, nil) }
 
 func format(v any) string {

@@ -25,27 +25,28 @@ func (this *CreateTaskFixture) Setup() {
 	this.HTTPFixture.Setup()
 }
 
+func (this *CreateTaskFixture) TestUnsupportedContentType() {
+	this.assertFullHTTP("PUT /tasks",
+		scuter.Request.With(
+			scuter.Request.Header("Content-Type", "wrong"),
+			scuter.Request.Body(strings.NewReader(`{"valid":"json"}`)),
+		),
+		scuter.Response.JSONErrors(http.StatusBadRequest, scuter.ErrUnsupportedRequestContentType),
+	)
+}
 func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
 	this.assertFullHTTP("PUT /tasks",
 		scuter.Request.With(
+			scuter.Request.Header("Content-Type", "application/json; charset=utf-8"),
 			scuter.Request.Body(strings.NewReader("invalid json")),
 		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusBadRequest),
-			scuter.Response.JSONError(testErrBadRequestInvalidJSON),
-		),
+		scuter.Response.JSONErrors(http.StatusBadRequest, scuter.ErrInvalidRequestJSONBody),
 	)
 }
 func (this *CreateTaskFixture) TestInvalidFields() {
 	this.assertFullHTTP("PUT /tasks",
-		scuter.Request.With(
-			scuter.Request.JSONBody(nil),
-		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusUnprocessableEntity),
-			scuter.Response.JSONError(testErrMissingDueDate),
-			scuter.Response.JSONError(testErrMissingDetails),
-		),
+		scuter.Request.JSONBody(nil),
+		scuter.Response.JSONErrors(http.StatusUnprocessableEntity, testErrMissingDueDate, testErrMissingDetails),
 	)
 }
 func (this *CreateTaskFixture) TestNoID() {
@@ -58,10 +59,7 @@ func (this *CreateTaskFixture) TestNoID() {
 				"due_date": this.now,
 			}),
 		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusInternalServerError),
-			scuter.Response.JSONError(testErrInternalServerError),
-		),
+		scuter.Response.JSONErrors(http.StatusInternalServerError, testErrInternalServerError),
 	)
 }
 func (this *CreateTaskFixture) TestTaskTooHard() {
@@ -74,10 +72,7 @@ func (this *CreateTaskFixture) TestTaskTooHard() {
 				"due_date": this.now,
 			}),
 		),
-		scuter.Response.With(
-			scuter.Response.StatusCode(http.StatusTeapot),
-			scuter.Response.JSONError(testErrTaskTooHard),
-		),
+		scuter.Response.JSONErrors(http.StatusTeapot, testErrTaskTooHard),
 	)
 }
 func (this *CreateTaskFixture) TestHappyPath() {

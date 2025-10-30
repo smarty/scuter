@@ -28,7 +28,7 @@ func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOpt
 	query := request.URL.Query()
 	id, err := strconv.ParseUint(query.Get("id"), 10, 64)
 	if err != nil {
-		return errResponse(http.StatusBadRequest, errBadRequestInvalidID)
+		return scuter.Response.JSONErrors(http.StatusBadRequest, errBadRequestInvalidID)
 	}
 
 	command := app.DeleteTaskCommand{ID: id}
@@ -40,6 +40,6 @@ func (this *DeleteTaskShell) serveHTTP(request *http.Request) scuter.ResponseOpt
 	case errors.Is(command.Result.Error, app.ErrTaskNotFound):
 		return nil
 	default:
-		return errResponse(http.StatusInternalServerError, errInternalServerError)
+		return scuter.Response.JSONErrors(http.StatusInternalServerError, errInternalServerError)
 	}
 }

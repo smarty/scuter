@@ -21,9 +21,9 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	response.WriteHeader(config.status)
 
 	if len(config.jsonErrors.Errors) > 0 {
-		_ = json.MarshalWrite(response, config.jsonErrors)
+		_ = json.MarshalWrite(response, config.jsonErrors, config.jsonOptions...)
 	} else if config.dataJSON != nil {
-		_ = json.MarshalWrite(response, config.dataJSON)
+		_ = json.MarshalWrite(response, config.dataJSON, config.jsonOptions...)
 	} else if config.dataReader != nil {
 		config.writeFromReader(response, config.dataReader)
 	} else if config.data.Len() > 0 {
@@ -72,25 +72,31 @@ func (responseSingleton) StatusCode(code int) ResponseOption {
 
 // BytesBody writes the bytes to the ResponseWriter and returns any error.
 func (responseSingleton) BytesBody(b []byte) ResponseOption {
-	return func(config *responseConfig) {
-		_, _ = config.data.Write(b)
-	}
+	return func(config *responseConfig) { _, _ = config.data.Write(b) }
 }
 
-// JSONBody uses json.MarshalWrite to serialize v to the ResponseWriter using the provided options and returning any error.
-func (responseSingleton) JSONBody(v any, options ...json.Options) ResponseOption {
+// JSONBody uses json.MarshalWrite to serialize v to the ResponseWriter.
+func (responseSingleton) JSONBody(v any) ResponseOption {
 	return func(config *responseConfig) {
 		config.header.Set(headerContentType, jsonContentType)
-		config.jsonOptions = append(config.jsonOptions, options...)
 		config.dataJSON = v
 	}
 }
 
-func (responseSingleton) JSONError(err Error, options ...json.Options) ResponseOption {
+// JSONError uses json.MarshalWrite to serialize the errors to the ResponseWriter.
+func (responseSingleton) JSONError(err Error) ResponseOption {
 	return func(config *responseConfig) {
 		config.header.Set(headerContentType, jsonContentType)
 		config.jsonErrors.Append(err)
-		config.jsonOptions = append(config.jsonOptions, options...)
+	}
+}
+
+// JSONErrors sets the supplied status code and uses json.MarshalWrite to serialize the errors to the ResponseWriter.
+func (responseSingleton) JSONErrors(code int, errs ...Error) ResponseOption {
+	return func(config *responseConfig) {
+		Response.StatusCode(code)(config)
+		config.header.Set(headerContentType, jsonContentType)
+		config.jsonErrors.Append(errs...)
 	}
 }
 
@@ -106,7 +112,6 @@ func (responseSingleton) BodyWithAttachment(filename string, content io.Reader) 
 	return func(config *responseConfig) {
 		config.header.Set(headerContentDisposition, fmt.Sprintf(attachmentDisposition, filename))
 		config.header.Set(headerContentType, mime.TypeByExtension(filepath.Ext(filename)))
-		config.status = http.StatusOK
 		config.dataReader = content
 	}
 }

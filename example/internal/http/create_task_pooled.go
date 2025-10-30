@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json/v2"
 	"errors"
 	"net/http"
 	"strings"
@@ -58,8 +57,9 @@ func (this *CreateTaskShell) ServeHTTP(response http.ResponseWriter, request *ht
 	scuter.Flush(response, this.serveHTTP(request, model))
 }
 func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskModel) (result scuter.ResponseOption) {
-	if err := json.UnmarshalRead(request.Body, &model.Request); err != nil {
-		return errResponse(http.StatusBadRequest, errBadRequestInvalidJSON)
+	result, ok := scuter.ReadJSONRequestBody(request, &model.Request)
+	if !ok {
+		return result
 	}
 	if model.Request.DueDate.IsZero() {
 		result = scuter.Response.With(result, scuter.Response.JSONError(errMissingDueDate))
@@ -79,9 +79,9 @@ func (this *CreateTaskShell) serveHTTP(request *http.Request, model *CreateTaskM
 	case model.Command.Result.Error == nil && model.Command.Result.ID > 0:
 		return this.ok(model)
 	case errors.Is(model.Command.Result.Error, app.ErrTaskTooHard):
-		return errResponse(http.StatusTeapot, errTaskTooHard)
+		return scuter.Response.JSONErrors(http.StatusTeapot, errTaskTooHard)
 	default:
-		return errResponse(http.StatusInternalServerError, errInternalServerError)
+		return scuter.Response.JSONErrors(http.StatusInternalServerError, errInternalServerError)
 	}
 }
 

@@ -3,11 +3,46 @@
 package scuter
 
 import (
+	"encoding/json/v2"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
+
+var (
+	ErrUnsupportedRequestContentType = Error{
+		Fields:  []string{"Content-Type"},
+		Name:    "unsupported-content-type",
+		Message: "The content-type was not supported.",
+	}
+	ErrInvalidRequestJSONBody = Error{
+		Fields:  []string{"body"},
+		Name:    "malformed-request-payload",
+		Message: "The body did not contain well-formed data and could not be properly deserialized.",
+	}
+)
+
+// ReadJSONRequestBody ensures the Content-Type header indicates JSON and if so, proceeds to unmarshal the body into
+// the provided value. Failure at any point results in a JSON error which can be sent to the client with Flush.
+func ReadJSONRequestBody(request *http.Request, v any) (ResponseOption, bool) {
+	if !isJSONContent(request) {
+		return Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), false
+	}
+	if err := json.UnmarshalRead(request.Body, &v); err != nil {
+		return Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), false
+	}
+	return nil, true
+}
+
+func isJSONContent(request *http.Request) bool {
+	for _, contentType := range request.Header[headerContentType] {
+		if strings.Contains(contentType, "json") {
+			return true
+		}
+	}
+	return false
+}
 
 // ReadUint64Header parses the first header value corresponding with key as a uint64.
 func ReadUint64Header(headers http.Header, key string) uint64 {

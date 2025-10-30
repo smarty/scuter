@@ -8,11 +8,6 @@ var (
 		Name:    "invalid-id",
 		Message: "The id was invalid or not supplied.",
 	}
-	testErrBadRequestInvalidJSON = scuter.Error{
-		Fields:  []string{"body"},
-		Name:    "malformed-request-payload",
-		Message: "The body did not contain well-formed data and could not be properly deserialized.",
-	}
 	testErrMissingDueDate = scuter.Error{
 		Fields:  []string{"due_date"},
 		Name:    "missing-due-date",
