@@ -27,6 +27,6 @@ func NewErrors(values ...Error) *Errors {
 	return &Errors{Errors: values}
 }
 
-func (this *Errors) Append(err Error) {
-	this.Errors = append(this.Errors, err)
+func (this *Errors) Append(errs ...Error) {
+	this.Errors = append(this.Errors, errs...)
 }
