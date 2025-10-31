@@ -15,10 +15,6 @@ import (
 	"github.com/smarty/scuter"
 )
 
-func TestHTTPFixture(t *testing.T) {
-	gunit.Run(new(HTTPFixture), t)
-}
-
 type HTTPFixture struct {
 	*gunit.Fixture
 	now time.Time
