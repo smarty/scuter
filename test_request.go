@@ -3,7 +3,7 @@ package scuter
 import (
 	"bytes"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -80,7 +80,7 @@ func (requestSingleton) Body(r io.Reader) RequestOption {
 func (requestSingleton) JSONBody(v any) RequestOption {
 	return func(c *requestConfig) {
 		Request.Header(headerContentType, jsonContentType)(c)
-		err := json.MarshalWrite(c.body, v)
+		err := json.NewEncoder(c.body).Encode(v) // FUTURE: upgrade to json/v2's MarshalWrite
 		if err != nil {
 			panic(err)
 		}

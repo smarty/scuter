@@ -38,7 +38,7 @@ func TestResponseBytesBody(t *testing.T) {
 func TestResponseJSONBody(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	Flush(recorder, Response.JSONBody([]string{"a", "b", "c"}))
-	should.So(t, recorder.Body.String(), should.Equal, `["a","b","c"]`)
+	should.So(t, recorder.Body.String(), should.Equal, `["a","b","c"]`+"\n")
 }
 func TestResponseJSONError(t *testing.T) {
 	recorder := httptest.NewRecorder()
@@ -49,7 +49,7 @@ func TestResponseJSONError(t *testing.T) {
 		Message: "testing error message",
 	}))
 	should.So(t, recorder.Body.String(), should.Equal,
-		`{"errors":[{"fields":["field-1","field-2"],"id":42,"name":"testing-error","message":"testing error message"}]}`,
+		`{"errors":[{"fields":["field-1","field-2"],"id":42,"name":"testing-error","message":"testing error message"}]}`+"\n",
 	)
 }
 func TestResponseBodyFromReader(t *testing.T) {

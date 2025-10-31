@@ -1,9 +1,7 @@
-//go:build goexperiment.jsonv2
-
 package scuter
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +27,7 @@ func ReadJSONRequestBody(request *http.Request, v any) (ResponseOption, bool) {
 	if !isJSONContent(request) {
 		return Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), false
 	}
-	if err := json.UnmarshalRead(request.Body, &v); err != nil {
+	if err := json.NewDecoder(request.Body).Decode(&v); err != nil { // FUTURE: upgrade to json/v2's json.UnmarshalRead
 		return Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), false
 	}
 	return nil, true

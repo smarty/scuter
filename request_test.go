@@ -3,6 +3,7 @@ package scuter
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +20,10 @@ func TestReadJSONRequestBody_MissingContentType(t *testing.T) {
 	assertResponseEqual(t, Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), actual)
 }
 func TestReadJSONRequestBody_MalformedJSON(t *testing.T) {
-	request := NewTestRequest(t.Context(), "PUT", "/", Request.JSONBody(`invalid`))
+	request := NewTestRequest(t.Context(), "PUT", "/", Request.With(
+		Request.Header("Content-Type", "application/json"),
+		Request.Body(strings.NewReader(`{invalid`)),
+	))
 	v := make(map[string]any)
 
 	actual, ok := ReadJSONRequestBody(request, v)

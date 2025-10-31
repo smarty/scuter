@@ -2,7 +2,7 @@ package scuter
 
 import (
 	"bytes"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime"
@@ -21,9 +21,9 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	response.WriteHeader(config.status)
 
 	if len(config.jsonErrors.Errors) > 0 {
-		_ = json.MarshalWrite(response, config.jsonErrors, config.jsonOptions...)
+		_ = json.NewEncoder(response).Encode(config.jsonErrors) // FUTURE: upgrade to json/v2's MarshalWrite
 	} else if config.dataJSON != nil {
-		_ = json.MarshalWrite(response, config.dataJSON, config.jsonOptions...)
+		_ = json.NewEncoder(response).Encode(config.dataJSON)
 	} else if config.dataReader != nil {
 		config.writeFromReader(response, config.dataReader)
 	} else if config.data.Len() > 0 {
@@ -125,13 +125,12 @@ var (
 )
 
 type responseConfig struct {
-	header      http.Header
-	status      int
-	dataReader  io.Reader
-	data        bytes.Buffer
-	dataJSON    any
-	jsonErrors  *Errors
-	jsonOptions []json.Options
+	header     http.Header
+	status     int
+	dataReader io.Reader
+	data       bytes.Buffer
+	dataJSON   any
+	jsonErrors *Errors
 }
 
 func (this *responseConfig) writeFromReader(response http.ResponseWriter, reader io.Reader) {
@@ -151,7 +150,6 @@ func (this *responseConfig) reset(header http.Header) {
 	this.dataJSON = nil
 	this.dataReader = nil
 	this.jsonErrors.Errors = this.jsonErrors.Errors[:0]
-	this.jsonOptions = this.jsonOptions[:0]
 }
 
 var responseConfigs = NewPool[*responseConfig](func() *responseConfig {
