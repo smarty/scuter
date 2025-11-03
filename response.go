@@ -50,6 +50,14 @@ func (responseSingleton) With(options ...ResponseOption) ResponseOption {
 	}
 }
 
+// If returns a 'composite' option only if the supplied condition is true, otherwise nil (which will be ignored).
+func (responseSingleton) If(condition bool, options ...ResponseOption) ResponseOption {
+	if !condition {
+		return nil
+	}
+	return Response.With(options...)
+}
+
 // Header adds the value associated with key.
 func (responseSingleton) Header(key, value string) ResponseOption {
 	return func(config *responseConfig) { config.header.Add(key, value) }

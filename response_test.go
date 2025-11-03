@@ -74,6 +74,16 @@ func TestResponseWith(t *testing.T) {
 	should.So(t, recorder.Code, should.Equal, http.StatusTeapot)
 	should.So(t, recorder.Header().Get("Content-Type"), should.Equal, "application/json; charset=utf-8")
 }
+func TestResponseIf_False(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	Flush(recorder, Response.If(false, Response.StatusCode(http.StatusTeapot)))
+	should.So(t, recorder.Code, should.Equal, http.StatusOK)
+}
+func TestResponseIf_True(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	Flush(recorder, Response.If(true, Response.StatusCode(http.StatusTeapot)))
+	should.So(t, recorder.Code, should.Equal, http.StatusTeapot)
+}
 func TestResponseBodyFromReadCloser_CloseCalled(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	readCloser := &Closer{
