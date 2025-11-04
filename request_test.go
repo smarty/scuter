@@ -17,7 +17,7 @@ func TestReadJSONRequestBody_MissingContentType(t *testing.T) {
 	actual, ok := ReadJSONRequestBody(request, v)
 
 	should.So(t, ok, should.BeFalse)
-	assertResponseEqual(t, Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), actual)
+	assertResponseEqual(t, Response.JSONErrors(http.StatusUnsupportedMediaType, ErrUnsupportedRequestContentType), actual)
 }
 func TestReadJSONRequestBody_MalformedJSON(t *testing.T) {
 	request := NewTestRequest(t.Context(), "PUT", "/", Request.With(

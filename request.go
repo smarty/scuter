@@ -25,7 +25,7 @@ var (
 // the provided value. Failure at any point results in a JSON error which can be sent to the client with Flush.
 func ReadJSONRequestBody(request *http.Request, v any) (ResponseOption, bool) {
 	if !isJSONContent(request) {
-		return Response.JSONErrors(http.StatusBadRequest, ErrUnsupportedRequestContentType), false
+		return Response.JSONErrors(http.StatusUnsupportedMediaType, ErrUnsupportedRequestContentType), false
 	}
 	if err := json.NewDecoder(request.Body).Decode(&v); err != nil { // FUTURE: upgrade to json/v2's json.UnmarshalRead
 		return Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), false
