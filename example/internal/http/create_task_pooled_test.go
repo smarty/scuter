@@ -25,7 +25,7 @@ func (this *CreateTaskFixture) Setup() {
 }
 
 func (this *CreateTaskFixture) TestUnsupportedContentType() {
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.Header("Content-Type", "wrong"),
 			scuter.Request.Body(strings.NewReader(`{"valid":"json"}`)),
@@ -34,7 +34,7 @@ func (this *CreateTaskFixture) TestUnsupportedContentType() {
 	)
 }
 func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.Header("Content-Type", "application/json; charset=utf-8"),
 			scuter.Request.Body(strings.NewReader("invalid json")),
@@ -43,7 +43,7 @@ func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
 	)
 }
 func (this *CreateTaskFixture) TestInvalidFields() {
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.JSONBody(nil),
 		scuter.Response.JSONErrors(http.StatusUnprocessableEntity, testErrMissingDueDate, testErrMissingDetails),
 	)
@@ -51,7 +51,7 @@ func (this *CreateTaskFixture) TestInvalidFields() {
 func (this *CreateTaskFixture) TestNoID() {
 	this.app = func(v any) { v.(*app.CreateTaskCommand).Result.ID = 0 }
 
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
@@ -64,7 +64,7 @@ func (this *CreateTaskFixture) TestNoID() {
 func (this *CreateTaskFixture) TestTaskTooHard() {
 	this.app = func(v any) { v.(*app.CreateTaskCommand).Result.Error = app.ErrTaskTooHard }
 
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
@@ -81,7 +81,7 @@ func (this *CreateTaskFixture) TestHappyPath() {
 		command.Result.ID = 42
 	}
 
-	this.assertFullHTTP("PUT /tasks",
+	this.AssertFullHTTP("PUT /tasks",
 		scuter.Request.With(
 			scuter.Request.JSONBody(map[string]any{
 				"details":  "Details",
