@@ -30,7 +30,7 @@ func (this *CreateTaskFixture) TestUnsupportedContentType() {
 			scuter.Request.Header("Content-Type", "wrong"),
 			scuter.Request.Body(strings.NewReader(`{"valid":"json"}`)),
 		),
-		scuter.Response.JSONErrors(http.StatusBadRequest, scuter.ErrUnsupportedRequestContentType),
+		scuter.Response.JSONErrors(http.StatusUnsupportedMediaType, scuter.ErrUnsupportedRequestContentType),
 	)
 }
 func (this *CreateTaskFixture) TestInvalidJSONRequestBody() {
