@@ -41,6 +41,7 @@ func TestReadJSONRequestBody(t *testing.T) {
 	should.So(t, actual, should.BeNil)
 }
 func assertResponseEqual(t *testing.T, expected, actual ResponseOption) {
+	t.Helper()
 	EXPECTED := httptest.NewRecorder()
 	ACTUAL := httptest.NewRecorder()
 
