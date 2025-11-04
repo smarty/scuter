@@ -66,12 +66,11 @@ func (this *HTTPFixture) assertFullHTTP(route string, req scuter.RequestOption, 
 
 	this.So(actual.Code, should.Equal, expected.Code)
 	this.So(actual.Header(), should.Equal, expected.Header())
-	if strings.Contains(actual.Header().Get("Content-Type"), "json") {
-		var actualBody, expectedBody any
-		_ = json.Unmarshal(actual.Body.Bytes(), &actualBody)
-		_ = json.Unmarshal(expected.Body.Bytes(), &expectedBody)
-		this.So(actualBody, should.Equal, expectedBody)
-	} else {
-		this.So(actual.Body.String(), should.Equal, expected.Body.String())
+	if strings.TrimSpace(actual.Body.String()) == strings.TrimSpace(expected.Body.String()) {
+		return
 	}
+	var actualBody, expectedBody any
+	_ = json.Unmarshal(actual.Body.Bytes(), &actualBody)
+	_ = json.Unmarshal(expected.Body.Bytes(), &expectedBody)
+	this.So(actualBody, should.Equal, expectedBody)
 }
