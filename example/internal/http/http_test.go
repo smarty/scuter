@@ -22,16 +22,19 @@ type HTTPFixture struct {
 	app func(any)
 }
 
+func NewHTTPFixture(inner *gunit.Fixture) *HTTPFixture {
+	return &HTTPFixture{
+		Fixture: inner,
+		now:     time.Now().Truncate(time.Second),
+		ctx:     context.WithValue(inner.T().Context(), "testing", inner.Name()),
+		app:     func(any) {},
+	}
+}
 func (this *HTTPFixture) Handle(ctx context.Context, messages ...any) {
 	this.So(ctx.Value("testing"), should.Equal, this.Name())
 	for _, msg := range messages {
 		this.app(msg)
 	}
-}
-func (this *HTTPFixture) Setup() {
-	this.now = time.Now().Truncate(time.Second)
-	this.ctx = context.WithValue(this.T().Context(), "testing", this.Name())
-	this.app = func(any) {}
 }
 
 func (this *HTTPFixture) serve(request *http.Request) *httptest.ResponseRecorder {

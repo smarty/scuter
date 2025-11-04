@@ -21,8 +21,7 @@ type CreateTaskFixture struct {
 }
 
 func (this *CreateTaskFixture) Setup() {
-	this.HTTPFixture = &HTTPFixture{Fixture: this.Fixture}
-	this.HTTPFixture.Setup()
+	this.HTTPFixture = NewHTTPFixture(this.Fixture)
 }
 
 func (this *CreateTaskFixture) TestUnsupportedContentType() {
