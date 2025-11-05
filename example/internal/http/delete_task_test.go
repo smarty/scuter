@@ -21,7 +21,7 @@ type DeleteTaskFixture struct {
 }
 
 func (this *DeleteTaskFixture) Setup() {
-	this.HTTPFixture = NewHTTPFixture(this.Fixture)
+	this.HTTPFixture = NewHTTPFixture(this.Fixture, New(this, this))
 }
 
 func (this *DeleteTaskFixture) TestInvalidID() {

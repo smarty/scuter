@@ -17,17 +17,19 @@ import (
 
 type HTTPFixture struct {
 	*gunit.Fixture
-	now time.Time
-	ctx context.Context
-	app func(any)
+	now    time.Time
+	ctx    context.Context
+	router http.Handler
+	app    func(any)
 }
 
-func NewHTTPFixture(inner *gunit.Fixture) *HTTPFixture {
+func NewHTTPFixture(inner *gunit.Fixture, router http.Handler) *HTTPFixture {
 	return &HTTPFixture{
 		Fixture: inner,
 		now:     time.Now().Truncate(time.Second),
 		ctx:     context.WithValue(inner.T().Context(), "testing", inner.Name()),
 		app:     func(any) {},
+		router:  router,
 	}
 }
 func (this *HTTPFixture) Handle(ctx context.Context, messages ...any) {
@@ -47,8 +49,7 @@ func (this *HTTPFixture) Serve(request *http.Request) *httptest.ResponseRecorder
 	}
 
 	actual := httptest.NewRecorder()
-	router := New(this, this)
-	router.ServeHTTP(actual, request)
+	this.router.ServeHTTP(actual, request)
 
 	if testing.Verbose() {
 		this.Println()
