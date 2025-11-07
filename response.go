@@ -142,12 +142,9 @@ type responseConfig struct {
 }
 
 func (this *responseConfig) writeFromReader(response http.ResponseWriter, reader io.Reader) {
-	defer func() {
-		closer, ok := reader.(io.Closer)
-		if ok {
-			_ = closer.Close()
-		}
-	}()
+	if closer, ok := reader.(io.Closer); ok {
+		defer func() { _ = closer.Close() }()
+	}
 	_, _ = io.Copy(response, reader)
 }
 
