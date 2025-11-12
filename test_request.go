@@ -13,10 +13,12 @@ import (
 // NewTestRequest returns a new incoming server *http.Request, suitable for passing to an [http.Handler] for testing.
 // IMPORTANT: Any error encountered in building the *http.Request results in a panic.
 func NewTestRequest(ctx context.Context, method, target string, options ...RequestOption) *http.Request {
-	config := requestConfigs.Get()
-	defer requestConfigs.Put(config)
-	config.reset()
-	Request.With(options...)(config)
+	config := requestConfig{
+		body:    bytes.NewBuffer(nil),
+		headers: make(http.Header),
+		query:   make(url.Values),
+	}
+	Request.With(options...)(&config)
 
 	request := httptest.NewRequestWithContext(ctx, method, target, config.body)
 
@@ -35,6 +37,12 @@ func NewTestRequest(ctx context.Context, method, target string, options ...Reque
 	}
 
 	return request
+}
+
+type requestConfig struct {
+	query   url.Values
+	headers http.Header
+	body    *bytes.Buffer
 }
 
 // RequestOption is a callback func with an opportunity to modify the *requestConfig.
@@ -86,23 +94,3 @@ func (requestSingleton) JSONBody(v any) RequestOption {
 		}
 	}
 }
-
-type requestConfig struct {
-	query   url.Values
-	headers http.Header
-	body    *bytes.Buffer
-}
-
-func (this *requestConfig) reset() {
-	clear(this.query)
-	clear(this.headers)
-	this.body.Reset()
-}
-
-var requestConfigs = NewPool[*requestConfig](func() *requestConfig {
-	return &requestConfig{
-		query:   make(url.Values),
-		headers: make(http.Header),
-		body:    bytes.NewBuffer(nil),
-	}
-})
