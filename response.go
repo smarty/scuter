@@ -10,6 +10,13 @@ import (
 	"path/filepath"
 )
 
+var (
+	ErrInternalServerError = Error{
+		Name:    "internal-server-error",
+		Message: "Internal Server Error",
+	}
+)
+
 // Flush applies the options, which may be supplied in any order, to the provide ResponseWriter.
 // IMPORTANT: errors that occur from IO operations involving the response body are silently ignored.
 func Flush(response http.ResponseWriter, options ...ResponseOption) {
