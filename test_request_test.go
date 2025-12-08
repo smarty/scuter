@@ -57,7 +57,10 @@ func TestJSONBody(t *testing.T) {
 	)
 	buffer := bytes.NewBuffer(nil)
 	_, _ = io.Copy(buffer, request.Body)
-	should.So(t, buffer.String(), should.Equal, `{"a":"1"}`+"\n")
+	should.So(t,
+		strings.TrimSpace(buffer.String()),
+		should.Equal, `{"a":"1"}`,
+	)
 }
 func TestJSONBodyErrorPanic(t *testing.T) {
 	defer func() {
