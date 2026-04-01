@@ -1,5 +1,9 @@
 package scuter
 
+import (
+	"slices"
+)
+
 // Error represents some kind of problem, most likely with the calling HTTP request.
 type Error struct {
 	// Fields indicates the exact location(s) of the errors including the part of
@@ -21,6 +25,15 @@ type Error struct {
 }
 
 func (this Error) Error() string { return this.Message }
+
+func (this Error) Is(err error) bool {
+	as, ok := err.(Error)
+	return ok &&
+		as.ID == this.ID &&
+		as.Name == this.Name &&
+		as.Message == this.Message &&
+		slices.Equal(as.Fields, this.Fields)
+}
 
 // Errors represents a set of problems.
 type Errors struct {
