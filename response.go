@@ -2,7 +2,7 @@ package scuter
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"mime"
@@ -17,7 +17,7 @@ var (
 	}
 )
 
-// Flush applies the options, which may be supplied in any order, to the provide ResponseWriter.
+// Flush applies the options, which may be supplied in any order, to the provided ResponseWriter.
 // IMPORTANT: errors that occur from IO operations involving the response body are silently ignored.
 func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	config := responseConfigs.Get()
@@ -28,9 +28,9 @@ func Flush(response http.ResponseWriter, options ...ResponseOption) {
 	response.WriteHeader(config.status)
 
 	if len(config.jsonErrors.Errors) > 0 {
-		_ = json.NewEncoder(response).Encode(config.jsonErrors) // FUTURE: upgrade to json/v2's MarshalWrite
+		_ = json.MarshalWrite(response, config.jsonErrors)
 	} else if config.dataJSON != nil {
-		_ = json.NewEncoder(response).Encode(config.dataJSON)
+		_ = json.MarshalWrite(response, config.dataJSON)
 	} else if config.dataReader != nil {
 		config.writeFromReader(response, config.dataReader)
 	} else if config.data.Len() > 0 {
