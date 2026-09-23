@@ -1,7 +1,7 @@
 package scuter
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,7 +27,7 @@ func ReadJSONRequestBody(request *http.Request, v any) (ResponseOption, bool) {
 	if !isJSONContent(request) {
 		return Response.JSONErrors(http.StatusUnsupportedMediaType, ErrUnsupportedRequestContentType), false
 	}
-	if err := json.NewDecoder(request.Body).Decode(&v); err != nil { // FUTURE: upgrade to json/v2's json.UnmarshalRead
+	if err := json.UnmarshalRead(request.Body, &v); err != nil {
 		return Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), false
 	}
 	return nil, true

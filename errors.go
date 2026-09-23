@@ -13,7 +13,7 @@ type Error struct {
 
 	// ID represents the unique, numeric contractual identifier that can be used to
 	// associate this error with a particular front-end error message, if any.
-	ID int `json:"id,omitempty"`
+	ID int `json:"id,omitzero"`
 
 	// Name represents the unique string-based, contractual value that can be used to
 	// associate this error with a particular front-end error message, if any.
