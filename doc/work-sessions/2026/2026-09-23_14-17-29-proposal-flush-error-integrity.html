@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flush Error Integrity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbfbf9;
+    --panel: #ffffff;
+    --ink: #1f2328;
+    --muted: #5b6470;
+    --rule: #dde1e6;
+    --accent: #1f5fa8;
+    --ok: #2f855a;
+    --ok-bg: #e8f4ec;
+    --bad: #b83227;
+    --bad-bg: #fdecea;
+    --warn: #8a5a00;
+    --warn-bg: #fff4d6;
+    --code-bg: #f3f4f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 "IBM Plex Sans", system-ui, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 48px 16px 96px; }
+  h1 { font-size: 2rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 48px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.08rem; margin: 28px 0 8px; }
+  h4 { font-size: 0.98rem; margin: 20px 0 6px; }
+  .meta { color: var(--muted); font-size: 0.92rem; margin-bottom: 28px; }
+  code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.86em; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; line-height: 1.5; border: 1px solid var(--rule); }
+  pre code { background: none; padding: 0; }
+  .kw { color: #8a3ab9; } .cm { color: #6a737d; } .st { color: #1c7c54; } .fn { color: #1f5fa8; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 0.93rem; background: var(--panel); }
+  th, td { text-align: left; padding: 8px 10px; border: 1px solid var(--rule); vertical-align: top; }
+  th { background: #f1f3f5; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 600; background: #f7f8fa; }
+  .callout { border-left: 4px solid var(--accent); background: #eef4fb; padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-bg); }
+  .callout.ok { border-color: var(--ok); background: var(--ok-bg); }
+  .callout ul, .callout ol { margin: 6px 0 0; }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 1px 7px; border-radius: 10px; white-space: nowrap; }
+  .tag.bad { background: var(--bad-bg); color: var(--bad); }
+  .tag.ok { background: var(--ok-bg); color: var(--ok); }
+  .tag.warn { background: var(--warn-bg); color: var(--warn); }
+  .rec { background: var(--ok-bg); }
+  figure { margin: 20px 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; }
+  figcaption { color: var(--muted); font-size: 0.88rem; margin-top: 8px; text-align: center; }
+  svg { width: 100%; height: auto; display: block; }
+  .phase { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 4px 20px 12px; margin: 16px 0; }
+  .phase h3 { margin-top: 16px; }
+  .phase h4 { font-size: 0.95rem; margin: 14px 0 4px; }
+  .phase .goal { color: var(--muted); font-size: 0.93rem; margin: 0 0 8px; }
+  ul.check { list-style: none; padding-left: 0; margin: 0; }
+  ul.check li { padding: 4px 0 4px 30px; position: relative; }
+  ul.check li input { position: absolute; left: 4px; top: 9px; }
+  .step { display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; padding: 0 6px; border-radius: 4px; margin-right: 6px; vertical-align: 1px; }
+  .step.red { background: var(--bad-bg); color: var(--bad); }
+  .step.green { background: var(--ok-bg); color: var(--ok); }
+  .step.ref { background: #efe9fb; color: #6b3fb8; }
+  .step.run { background: #eceff3; color: var(--muted); }
+  .step.doc { background: #eef4fb; color: var(--accent); }
+  .step.ship { background: var(--warn-bg); color: var(--warn); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid2 > div { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 4px 16px 10px; }
+  .grid2 h4 { margin: 12px 0 6px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Flush Error Integrity</h1>
+<div class="meta">Proposal · <code>github.com/smarty/scuter</code> · branch <code>mikewhat/responsible-response</code> · target release <code>v0.8.0</code></div>
+
+<div class="callout">
+  <strong>Summary.</strong> When <code>Flush</code> fails today, the client can get a 200 status with an empty or partial body. The server keeps no record of the failure. This proposal makes each failure visible and gives the client a correct status where possible.
+  <ul>
+    <li><code>Flush</code> encodes all JSON into a pooled buffer <em>before</em> it writes the status code. An encode failure becomes a clean 500 response.</li>
+    <li><code>Flush</code> stages the headers that options add. It applies them only at commit. The 500 fallback discards them.</li>
+    <li><code>Flush</code> reads the first 512 bytes of a streamed body before it commits the status. A first-read failure also becomes a clean 500 response.</li>
+    <li><code>scuter.WrapMonitoring</code> wraps the router one time per service. <code>Flush</code> reports its errors to a caller-supplied monitor. The 339 existing call sites do not change.</li>
+    <li>The monitor does not get write errors from clients that disconnected.</li>
+    <li><code>Flush</code> also returns the <code>error</code>, for tests and for special call sites.</li>
+    <li>A new <code>Response.JSONOptions</code> option takes <code>json.Options</code> values for JSON response bodies. The library supplies <code>jsonv1.DefaultOptionsV1()</code> first. Caller options come after and can override it.</li>
+    <li><code>ReadJSONRequestBody</code> gets a variadic <code>...json.Options</code> parameter with the same defaults and the same override order. All existing calls compile unchanged.</li>
+    <li><code>Flush</code> always closes a body reader, also when a different body wins.</li>
+    <li><code>Flush</code> releases caller values from the pooled config, and limits the retained buffer size.</li>
+  </ul>
+  <p style="margin:8px 0 0">The services move from <code>v0.6.0</code> directly to <code>v0.8.0</code>. The only JSON change on the wire is the missing newline after a response body.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="background">1. Background</h2>
+
+<h3>1.1 The current <code>Flush</code></h3>
+
+<pre><code><span class="kw">func</span> <span class="fn">Flush</span>(response http.ResponseWriter, options ...ResponseOption) {
+	config := responseConfigs.Get()
+	<span class="kw">defer</span> responseConfigs.Put(config)
+	config.reset(response.Header())                <span class="cm">// options write headers directly</span>
+	Response.With(options...)(config)
+
+	response.WriteHeader(config.status)            <span class="cm">// status is committed here</span>
+
+	<span class="kw">if</span> len(config.jsonErrors.Errors) > 0 {
+		_ = json.MarshalWrite(response, config.jsonErrors)   <span class="cm">// error discarded</span>
+	} <span class="kw">else if</span> config.dataJSON != nil {
+		_ = json.MarshalWrite(response, config.dataJSON)     <span class="cm">// error discarded; body may be partial</span>
+	} <span class="kw">else if</span> config.dataReader != nil {
+		config.writeFromReader(response, config.dataReader)  <span class="cm">// copy and close errors discarded</span>
+	} <span class="kw">else if</span> config.data.Len() > 0 {
+		config.writeFromReader(response, &amp;config.data)
+	}
+}</code></pre>
+
+<p>The function writes the status code first. Then it writes the body. After the status code goes out, the function cannot change it. The function also discards every error.</p>
+
+<h3>1.2 Gaps</h3>
+<table>
+  <tr><th style="width:52px">ID</th><th>Gap</th><th style="width:210px">Effect on the client</th></tr>
+  <tr><td>G1</td><td>An encode error occurs after the status is committed. <code>MarshalWrite</code> writes directly to the <code>ResponseWriter</code>, so the body can be partial.</td><td><span class="tag bad">200 + empty or partial body</span></td></tr>
+  <tr><td>G2</td><td>The function discards all encode, write, read, and close errors. No logger or monitor sees them.</td><td><span class="tag warn">No record of the failure</span></td></tr>
+  <tr><td>G3</td><td>A streamed body that fails on the first read still sends 200 with an empty body. A failure after the first bytes ends the chunked body normally.</td><td><span class="tag bad">200 + empty or cut body</span></td></tr>
+  <tr><td>G4</td><td>A body reader that loses to a higher-priority body is never closed. Example: <code>BodyFromReader(file)</code> together with <code>JSONError(...)</code>.</td><td><span class="tag warn">Resource leak</span></td></tr>
+  <tr><td>G5</td><td>The pooled <code>responseConfig</code> keeps references to caller values until the next <code>Get</code>. Its buffer has no size limit.</td><td><span class="tag warn">Memory retention</span></td></tr>
+</table>
+
+<h3 id="survey">1.3 How the services use <code>Flush</code></h3>
+<p>Eleven <code>-context</code> repos use scuter, all at <code>v0.6.0</code>. The <code>gateway-context</code> repo does not use scuter. The counts come from the local clones in <code>~/code/src/bitbucket.org/smartystreets</code>.</p>
+
+<table>
+  <tr><th>Repo</th><th class="num" style="width:150px"><code>Flush</code> calls (non-test)</th><th>Router built in</th></tr>
+  <tr><td>subscription-context</td><td class="num">58</td><td><code>http/1_http_routes.go</code></td></tr>
+  <tr><td>security-context</td><td class="num">57</td><td><code>auth-server/http/http.go</code>, <code>http/oauth/1_http_routes.go</code>, <code>http/api/1_http_routes.go</code></td></tr>
+  <tr><td>authorization-context</td><td class="num">52</td><td><code>http/1_http_routes.go</code></td></tr>
+  <tr><td>sales-context</td><td class="num">43</td><td><code>code/http/1_http_routes.go</code></td></tr>
+  <tr><td>identity-context</td><td class="num">40</td><td><code>http/filtered/1_http_routes.go</code>, <code>http/api/1_http_routes.go</code></td></tr>
+  <tr><td>notification-context</td><td class="num">27</td><td><code>code/http/1_http_routes.go</code></td></tr>
+  <tr><td>payment-context</td><td class="num">26</td><td><code>code/http/1_http_routes.go</code></td></tr>
+  <tr><td>reporting-context</td><td class="num">17</td><td>Unknown</td></tr>
+  <tr><td>billing-context</td><td class="num">13</td><td><code>code/http/1_http_routes.go</code></td></tr>
+  <tr><td>platform-context</td><td class="num">5</td><td><code>code/http/1_http_routes.go</code></td></tr>
+  <tr><td>deployment-context</td><td class="num">1</td><td>Unknown</td></tr>
+  <tr class="total"><td>Total</td><td class="num">339</td><td>About 15 router sites</td></tr>
+</table>
+
+<ul>
+  <li><strong>The call sites are almost all the same.</strong> Nearly every call is <code>scuter.Flush(response, this.serveHTTP(request))</code>, inside a one-line <code>ServeHTTP</code>. About a dozen calls are different, mostly in the OAuth endpoints of <code>security-context</code>.</li>
+  <li><strong>The handlers have no logger.</strong> Only 12 of the handler files refer to a logger, a monitor, or metrics.</li>
+  <li><strong>Each repo builds its router in one to three places.</strong> The repos use <code>smarty/httprouter</code>. Some repos already wrap the router, for example <code>meta.NewHTTPHandler</code> in <code>subscription-context</code>.</li>
+  <li><strong>No code asserts optional writer interfaces.</strong> No repo has a direct type assertion to <code>http.Flusher</code>, <code>http.Hijacker</code>, or <code>http.Pusher</code>.</li>
+</ul>
+
+<p>Thus a report path at each call site needs about 339 edits and a logger in about 330 handlers. A report path at the router needs about 15 edits.</p>
+
+<h3 id="severity">1.4 Severity</h3>
+
+<p>The services do not marshal unsupported types, and their handlers have high test coverage. But tests use clean fixtures. The encode failures that matter depend on the data, not on the types. With <code>MarshalWrite</code>, each of these data conditions leaves a partial body:</p>
+
+<pre><code>valid          → {"id":1,"name":"ok","ratio":0.5,"renewed":"2026-01-01T00:00:00Z"}
+invalid UTF-8  → {"id":1     err: jsontext: invalid UTF-8 within "/name"
+NaN            → {"id":1     err: unsupported value: NaN
++Inf           → {"id":1     err: unsupported value: +Inf
+year 10000     → {"id":1     err: year outside of range [0,9999]
+2000 rows, NaN in the last row → 56,180 bytes of JSON, then the error</code></pre>
+
+<p>An error from a custom <code>MarshalJSON</code> method has the same effect. The v1 options (<code>jsonv1.DefaultOptionsV1()</code>) do not change this for NaN, ±Inf, bad years, or marshaler errors. They only repair invalid UTF-8.</p>
+
+<h4>Effect by version</h4>
+<p><code>v0.6.0</code> uses the v1 <code>Encoder.Encode</code>, which encodes the full value before it writes. <code>v0.7.0</code> uses the json/v2 <code>MarshalWrite</code> with default options, which writes while it encodes. No service uses <code>v0.7.0</code>.</p>
+
+<table>
+  <tr><th>Data condition</th><th style="width:240px"><code>v0.6.0</code> (in the services)</th><th style="width:240px"><code>v0.7.0</code> (not deployed)</th></tr>
+  <tr><td>Invalid UTF-8 in a string</td><td>Replaced with U+FFFD; valid 200</td><td><span class="tag bad">200 + partial body</span></td></tr>
+  <tr><td>NaN or ±Inf float</td><td><span class="tag warn">200 + empty body</span></td><td><span class="tag bad">200 + partial body</span></td></tr>
+  <tr><td><code>time.Time</code> year outside 0–9999</td><td><span class="tag warn">200 + empty body</span></td><td><span class="tag bad">200 + partial body</span></td></tr>
+  <tr><td>Custom marshaler error</td><td><span class="tag warn">200 + empty body</span></td><td><span class="tag bad">200 + partial body</span></td></tr>
+</table>
+
+<p>Invalid UTF-8 is the most likely condition. The JSON decoder repairs strings that arrive in request bodies. These sources can still supply invalid UTF-8:</p>
+<ul>
+  <li>Database columns with a different character set.</li>
+  <li>Third-party APIs, for example payment gateways.</li>
+  <li>Code that cuts a string at a byte index, such as <code>s[:n]</code>.</li>
+</ul>
+
+<h4>Exposure in the services</h4>
+<p>These counts cover the packages that call <code>Flush</code>:</p>
+<ul>
+  <li><strong><code>time.Time</code>:</strong> about 130 fields in 8 repos. A year outside 0–9999 needs bad data, so the risk is low.</li>
+  <li><strong><code>float64</code>:</strong> 2 <code>Amount</code> fields, in <code>billing-context</code> and <code>reporting-context</code>. NaN is unlikely.</li>
+  <li><strong>Custom marshalers:</strong> 3, in <code>authorization-context</code>, <code>payment-context</code>, and <code>reporting-context</code>.</li>
+  <li><strong>Strings:</strong> in almost every response. The risk depends on the source of each string.</li>
+  <li><strong>Streamed bodies:</strong> about 10 calls to <code>BodyFromReader</code> or <code>BodyWithAttachment</code>.</li>
+</ul>
+
+<p>A bad record fails the same way on every request. The likely symptom is one customer whose page never loads. The access logs and metrics show 200 for each of those requests, so nobody can find the cause.</p>
+
+<h4>Severity of each gap</h4>
+<table>
+  <tr><th style="width:52px">Gap</th><th style="width:190px">Likelihood</th><th>Effect when it occurs</th><th style="width:120px">Priority</th></tr>
+  <tr><td>G1</td><td>Low</td><td>200 + empty or partial body. It repeats for the same record.</td><td><span class="tag ok">High</span></td></tr>
+  <tr><td>G2</td><td>Certain (default behavior)</td><td>G1 and G3 occur and leave no record.</td><td><span class="tag ok">High</span></td></tr>
+  <tr><td>G3</td><td>Low; about 10 call sites</td><td>200 + empty or cut download.</td><td><span class="tag warn">Medium</span></td></tr>
+  <tr><td>G4</td><td>Very low</td><td>A leaked file handle or connection.</td><td><span class="tag warn">Low, cheap</span></td></tr>
+  <tr><td>G5</td><td>Low</td><td>Short-lived memory retention. <code>sync.Pool</code> drops items across garbage collections. The G1 fix makes the buffer larger, so it needs a size limit.</td><td><span class="tag warn">Low, cheap</span></td></tr>
+</table>
+
+<div class="callout ok">
+  <strong>Justification.</strong>
+  <ol>
+    <li><strong>The failure rate is unknown.</strong> Each failure shows as a success. <code>WrapMonitoring</code> costs about 15 edits and makes the rate known.</li>
+    <li><strong>The json/v2 upgrade makes failures worse.</strong> An empty body becomes a partial body. The 500 fallback and the monitor must ship together with json/v2.</li>
+    <li><strong>The other fixes are small.</strong> G3, G4, and G5 each need a small, local change.</li>
+  </ol>
+</div>
+
+<h3 id="wire">1.5 json/v2 changes the wire format</h3>
+
+<p>With its default options, json/v2 changes the JSON that the services send and accept:</p>
+
+<table>
+  <tr><th>Case</th><th style="width:170px">v1 (<code>v0.6.0</code>)</th><th style="width:170px">v2 defaults</th><th style="width:130px">Service fields</th><th style="width:120px">In <code>v0.8.0</code></th></tr>
+  <tr><td><code>omitempty</code> on a zero number or <code>false</code></td><td>Field omitted</td><td><code>"id":0</code>, <code>"flag":false</code></td><td>About 228</td><td>v1 behavior</td></tr>
+  <tr><td>Nil slice, no <code>omitempty</code></td><td><code>null</code></td><td><code>[]</code></td><td>Up to 147</td><td>v1 behavior</td></tr>
+  <tr><td>Nil map, no <code>omitempty</code></td><td><code>null</code></td><td><code>{}</code></td><td>Not counted</td><td>v1 behavior</td></tr>
+  <tr><td>Newline after the body</td><td>Yes</td><td>No</td><td>All responses</td><td>No newline</td></tr>
+  <tr><td>Request name <code>"Due_Date"</code> for field <code>due_date</code></td><td>Matched</td><td>Ignored</td><td>All request bodies</td><td>v1 behavior</td></tr>
+  <tr><td>Duplicate name in a request body</td><td>Last value wins</td><td>400 (decode error)</td><td>All request bodies</td><td>v1 behavior</td></tr>
+  <tr><td>Invalid UTF-8 in a request body</td><td>Replaced with U+FFFD</td><td>400 (decode error)</td><td>All request bodies</td><td>v1 behavior</td></tr>
+</table>
+
+<p>The field counts include only the packages that call <code>Flush</code>. Each of these changes can break an API client.</p>
+
+<ul>
+  <li><strong>Response bodies</strong> keep the v1 behavior. <code>Flush</code> encodes with <code>jsonv1.DefaultOptionsV1()</code> first, then with the caller's <code>Response.JSONOptions</code> values (2.5).</li>
+  <li><strong>Request bodies</strong> keep the v1 behavior. <code>ReadJSONRequestBody</code> decodes with <code>jsonv1.DefaultOptionsV1()</code> first, then with the caller's options (2.5).</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="approach">2. Approach</h2>
+
+<h3>2.1 Report errors: a monitor at the router, plus a return value</h3>
+
+<table>
+  <tr><th style="width:250px">Mechanism</th><th>For</th><th>Against</th></tr>
+  <tr class="rec"><td><strong>A + E together</strong> (selected)</td><td>E covers all existing call sites with about 15 edits. A gives tests and special call sites direct access to the error.</td><td>Two paths report the same error. A caller that uses both paths logs the error two times.</td></tr>
+  <tr><td>A. <code>Flush</code> returns <code>error</code></td><td>Idiomatic Go. No new types.</td><td>Alone, it needs about 339 call-site edits and a logger in each handler.</td></tr>
+  <tr><td>B. Option <code>Response.OnError(func(error))</code></td><td>No signature change.</td><td>It needs an edit at every call site. An option that reports on the flush that applies it is circular.</td></tr>
+  <tr><td>C. <code>NewFlusher(monitor).Flush(...)</code></td><td>The caller configures the monitor one time per handler.</td><td>It needs a new field in every handler and an edit at every call site.</td></tr>
+  <tr><td>D. Package-level hook variable</td><td>Small change.</td><td>Global mutable state. Tests interfere with each other.</td></tr>
+  <tr><td>E. <code>scuter.WrapMonitoring</code> middleware</td><td>One edit per router. No change to handlers or call sites.</td><td>It wraps the <code>ResponseWriter</code>, which costs one small allocation per request.</td></tr>
+</table>
+
+<p>The error wraps one or more of these sentinel errors. <code>Flush</code> uses <code>errors.Join</code> when more than one failure occurs (for example, a read error and a close error).</p>
+
+<table>
+  <tr><th style="width:170px">Sentinel</th><th>Meaning</th><th style="width:250px">What the client gets</th></tr>
+  <tr><td><code>ErrFlushEncode</code></td><td>JSON encoding failed. The cause is a server bug or bad data.</td><td>A complete 500 fallback response.</td></tr>
+  <tr><td><code>ErrFlushRead</code></td><td>The body reader returned an error.</td><td>Before commit: a 500 fallback. After commit: a cut body.</td></tr>
+  <tr><td><code>ErrFlushWrite</code></td><td>A write to the <code>ResponseWriter</code> failed. Usually the client disconnected. Sometimes the cause is a bug, such as a body on a 204 response.</td><td>Unknown, or no body.</td></tr>
+  <tr><td><code>ErrFlushClose</code></td><td>The body reader's <code>Close</code> returned an error.</td><td>No effect on the response.</td></tr>
+</table>
+
+<p>The <code>ErrFlush</code> prefix keeps these Go errors apart from the API values of type <code>Error</code>, such as <code>ErrInternalServerError</code>.</p>
+
+<h3>2.2 <code>WrapMonitoring</code> and the <code>monitor</code> interface</h3>
+
+<p><code>WrapMonitoring</code> wraps an <code>http.Handler</code>. For each request, it wraps the <code>ResponseWriter</code> in a small <code>monitoredWriter</code>. This writer holds the request and the monitor. It also has an <code>Unwrap</code> method, so <code>http.ResponseController</code> still finds the inner writer.</p>
+
+<p>When <code>Flush</code> has an error, it walks the <code>Unwrap</code> chain of its <code>ResponseWriter</code>. If it finds a <code>monitoredWriter</code>, that writer sends the error to the monitor. If it finds none, <code>Flush</code> only returns the error. Other middleware between <code>WrapMonitoring</code> and the handler does not break this, if that middleware also has <code>Unwrap</code>.</p>
+
+<p>The monitor is any value that implements the unexported <code>monitor</code> interface. The interface has one method now. It can get more methods in later versions.</p>
+
+<figure>
+<svg viewBox="0 0 780 250" role="img" aria-label="How Flush finds the monitor">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+    </marker>
+    <marker id="a2b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f5fa8"/>
+    </marker>
+  </defs>
+  <style>
+    .b { fill: #f5f7fa; stroke: #4a5568; stroke-width: 1.3; }
+    .bm { fill: #eef4fb; stroke: #1f5fa8; stroke-width: 1.6; }
+    .bo { fill: #e8f4ec; stroke: #2f855a; stroke-width: 1.3; }
+    .tt { font: 500 13px 'IBM Plex Sans', sans-serif; fill: #1f2328; text-anchor: middle; dominant-baseline: middle; }
+    .ts { font: 12px 'JetBrains Mono', monospace; fill: #5b6470; text-anchor: middle; dominant-baseline: middle; }
+    .lb { font: 12px 'IBM Plex Sans', sans-serif; fill: #5b6470; }
+    .lbb { font: 600 12px 'IBM Plex Sans', sans-serif; fill: #1f5fa8; }
+    .l { stroke: #4a5568; stroke-width: 1.3; fill: none; }
+    .lbl2 { stroke: #1f5fa8; stroke-width: 1.3; fill: none; stroke-dasharray: 5 3; }
+  </style>
+
+  <rect class="b" x="10" y="40" width="130" height="56" rx="6"/>
+  <text class="tt" x="75" y="60">net/http</text>
+  <text class="ts" x="75" y="80">server</text>
+
+  <rect class="bm" x="170" y="40" width="150" height="56" rx="6"/>
+  <text class="tt" x="245" y="60">WrapMonitoring</text>
+  <text class="ts" x="245" y="80">wraps writer</text>
+
+  <rect class="b" x="350" y="40" width="130" height="56" rx="6"/>
+  <text class="tt" x="415" y="60">httprouter</text>
+  <text class="ts" x="415" y="80">(unchanged)</text>
+
+  <rect class="b" x="510" y="40" width="120" height="56" rx="6"/>
+  <text class="tt" x="570" y="60">Shell</text>
+  <text class="ts" x="570" y="80">ServeHTTP</text>
+
+  <rect class="bo" x="660" y="40" width="110" height="56" rx="6"/>
+  <text class="tt" x="715" y="68">Flush</text>
+
+  <line class="l" x1="140" y1="68" x2="168" y2="68" marker-end="url(#a2)"/>
+  <line class="l" x1="320" y1="68" x2="348" y2="68" marker-end="url(#a2)"/>
+  <line class="l" x1="480" y1="68" x2="508" y2="68" marker-end="url(#a2)"/>
+  <line class="l" x1="630" y1="68" x2="658" y2="68" marker-end="url(#a2)"/>
+  <text class="lb" x="330" y="30">request + monitoredWriter →</text>
+
+  <path class="lbl2" d="M715,96 L715,160 L245,160 L245,98" marker-end="url(#a2b)"/>
+  <text class="lbb" x="330" y="152">on error: walk Unwrap() until monitoredWriter is found</text>
+
+  <rect class="bm" x="140" y="190" width="210" height="44" rx="6"/>
+  <text class="tt" x="245" y="212">FlushFailed(request, err)</text>
+  <line class="lbl2" x1="245" y1="160" x2="245" y2="188" marker-end="url(#a2b)"/>
+  <text class="lb" x="365" y="216">The caller's monitor: log, count, or alert. Disconnects are dropped first.</text>
+</svg>
+<figcaption>Only the composition root knows about <code>WrapMonitoring</code>. Handlers and call sites stay as they are.</figcaption>
+</figure>
+
+<pre><code><span class="cm">// monitor receives reports from Flush. It may gain methods in future versions.</span>
+<span class="kw">type</span> monitor <span class="kw">interface</span> {
+	FlushFailed(request *http.Request, err error)
+}
+
+<span class="cm">// WrapMonitoring wraps next so that Flush reports its errors to monitoring, together with the request.
+// Write errors that occur after the client disconnects are not reported.
+// A nil monitoring returns next unchanged.</span>
+<span class="kw">func</span> <span class="fn">WrapMonitoring</span>(next http.Handler, monitoring monitor) http.Handler {
+	<span class="kw">if</span> monitoring == nil {
+		<span class="kw">return</span> next
+	}
+	<span class="kw">return</span> http.HandlerFunc(<span class="kw">func</span>(response http.ResponseWriter, request *http.Request) {
+		next.ServeHTTP(&amp;monitoredWriter{ResponseWriter: response, request: request, monitoring: monitoring}, request)
+	})
+}
+
+<span class="kw">type</span> monitoredWriter <span class="kw">struct</span> {
+	http.ResponseWriter
+	request    *http.Request
+	monitoring monitor
+}
+
+<span class="kw">func</span> (this *monitoredWriter) <span class="fn">Unwrap</span>() http.ResponseWriter { <span class="kw">return</span> this.ResponseWriter }
+
+<span class="kw">func</span> (this *monitoredWriter) <span class="fn">report</span>(err error) {
+	<span class="kw">if</span> err = withoutDisconnects(this.request, err); err != nil {
+		this.monitoring.FlushFailed(this.request, err)
+	}
+}</code></pre>
+
+<h4>Client disconnects</h4>
+<p>When a write to the connection fails, <code>net/http</code> cancels the request context. The monitored writer uses this signal:</p>
+<ul>
+  <li>If the request context is not canceled, the monitor gets the full error.</li>
+  <li>If the request context is canceled, the writer removes each <code>ErrFlushWrite</code> part from the error. The monitor gets the rest, if any.</li>
+</ul>
+<p>Thus the monitor still gets write errors from bugs, such as <code>http.ErrBodyNotAllowed</code> on a 204 response. The return value of <code>Flush</code> keeps all parts, including disconnects.</p>
+<p><code>net/http</code> buffers the first few kilobytes of each response. A disconnect during a small body shows only after the handler returns, so <code>Flush</code> never sees it.</p>
+
+<h4>Installation</h4>
+<p>A service installs the monitor at the router, for example in <code>subscription-context/http/1_http_routes.go</code>:</p>
+<pre><code><span class="kw">type</span> flushLogger <span class="kw">struct</span>{ logger app.Logger }
+
+<span class="kw">func</span> (this flushLogger) <span class="fn">FlushFailed</span>(request *http.Request, err error) {
+	this.logger.Printf(<span class="st">"[WARN] %s %s: %v"</span>, request.Method, request.URL.Path, err)
+}
+
+<span class="kw">return</span> scuter.WrapMonitoring(meta.NewHTTPHandler(httprouter.RequireNew(...)), flushLogger{logger: logger})</code></pre>
+
+<h3>2.3 Header staging</h3>
+<p>Options do not write to <code>response.Header()</code> directly. Each header option appends an operation to a pooled list in the config. An operation holds a key, a value, and one of two actions: add or set. At commit, <code>Flush</code> replays the list on <code>response.Header()</code> in order, then writes the status.</p>
+<ul>
+  <li><code>Header</code>, <code>ContentType</code>, and <code>JSONContentType</code> record an add action, as they do today.</li>
+  <li><code>JSONBody</code>, <code>JSONError</code>, <code>JSONErrors</code>, and <code>BodyWithAttachment</code> record a set action, as they do today.</li>
+  <li>Headers that middleware wrote before <code>Flush</code> stay in <code>response.Header()</code>. The replay changes them in the same way as today.</li>
+</ul>
+<p>Thus the result is the same as today on the success path. The 500 fallback discards the list, so headers such as <code>Location</code>, <code>ETag</code>, and <code>Content-Disposition</code> do not reach a 500 response.</p>
+<pre><code><span class="kw">type</span> headerOperation <span class="kw">struct</span> {
+	key     string
+	value   string
+	replace bool
+}
+
+<span class="kw">func</span> (this *responseConfig) <span class="fn">commit</span>(response http.ResponseWriter) {
+	header := response.Header()
+	<span class="kw">for</span> _, operation := <span class="kw">range</span> this.headers {
+		<span class="kw">if</span> operation.replace {
+			header.Set(operation.key, operation.value)
+		} <span class="kw">else</span> {
+			header.Add(operation.key, operation.value)
+		}
+	}
+	response.WriteHeader(this.status)
+}</code></pre>
+
+<h3>2.4 Encode before commit, with a fallback</h3>
+
+<p><code>Flush</code> encodes JSON into the pooled <code>config.data</code> buffer. It commits only after encoding succeeds. If encoding fails, <code>Flush</code> does these steps:</p>
+<ol>
+  <li>It discards the staged header operations.</li>
+  <li>It stages a set action for a JSON <code>Content-Type</code>.</li>
+  <li>It sets the status to 500.</li>
+  <li>It replaces the buffer with a precomputed body for <code>ErrInternalServerError</code>.</li>
+  <li>It returns the encode error wrapped with <code>ErrFlushEncode</code>.</li>
+</ol>
+<p>The package computes the fallback body one time, at initialization, with the library default options. Thus the fallback path has no encode step that can fail.</p>
+
+<h3>2.5 JSON options</h3>
+<p>A new option, <code>Response.JSONOptions</code>, takes <code>json.Options</code> values. <code>Flush</code> uses them when it encodes a <code>JSONBody</code> value or the <code>JSONError</code>/<code>JSONErrors</code> document. The existing JSON options do not change.</p>
+<ul>
+  <li>The library supplies <code>jsonv1.DefaultOptionsV1()</code> first. Thus the default output is the <code>v0.6.0</code> wire format, without the trailing newline.</li>
+  <li>Values from <code>Response.JSONOptions</code> come after the library defaults, in the order that the options are applied. A later value overrides an earlier value.</li>
+  <li>The position of <code>JSONOptions</code> relative to <code>JSONBody</code> in the option list does not matter. <code>Flush</code> encodes after it applies all options.</li>
+  <li>A future version can remove the library defaults. Callers that need v1 behavior can then supply <code>jsonv1.DefaultOptionsV1()</code> themselves.</li>
+</ul>
+<pre><code><span class="kw">var</span> defaultJSONOptions = jsonv1.DefaultOptionsV1()
+
+<span class="cm">// JSONOptions supplies options for encoding JSONBody and JSONError(s). Flush applies them after the
+// library defaults (currently the encoding/json v1 behavior), so they can override those defaults.</span>
+<span class="kw">func</span> (responseSingleton) <span class="fn">JSONOptions</span>(options ...json.Options) ResponseOption {
+	<span class="kw">return</span> <span class="kw">func</span>(config *responseConfig) { config.jsonOptions = append(config.jsonOptions, options...) }
+}</code></pre>
+
+<p>A test program confirms the override order:</p>
+<table>
+  <tr><th>Options, in order</th><th style="width:300px">Output for <code>{ID: 0, Tags: nil}</code></th></tr>
+  <tr><td><code>DefaultOptionsV1()</code></td><td><code>{"tags":null}</code></td></tr>
+  <tr><td><code>DefaultOptionsV1()</code>, <code>FormatNilSliceAsNull(false)</code></td><td><code>{"tags":[]}</code></td></tr>
+  <tr><td><code>DefaultOptionsV1()</code>, <code>OmitEmptyWithLegacySemantics(false)</code></td><td><code>{"id":0,"tags":null}</code></td></tr>
+  <tr><td><code>DefaultOptionsV1()</code>, <code>DefaultOptionsV2()</code></td><td>Full v2 behavior</td></tr>
+  <tr><td><code>FormatNilSliceAsNull(false)</code>, <code>DefaultOptionsV1()</code></td><td><code>{"tags":null}</code> (the later value wins)</td></tr>
+</table>
+
+<h4>Request decoding</h4>
+<p><code>ReadJSONRequestBody</code> gets a trailing variadic parameter. It decodes with the library defaults first, then with the caller's options. The order and the override rules are the same as for responses.</p>
+<pre><code><span class="kw">func</span> <span class="fn">ReadJSONRequestBody</span>(request *http.Request, v any, options ...json.Options) (ResponseOption, bool) {
+	<span class="kw">if</span> !isJSONContent(request) {
+		<span class="kw">return</span> Response.JSONErrors(http.StatusUnsupportedMediaType, ErrUnsupportedRequestContentType), false
+	}
+	<span class="kw">if</span> err := json.UnmarshalRead(request.Body, &amp;v, defaultJSONOptions, json.JoinOptions(options...)); err != nil {
+		<span class="kw">return</span> Response.JSONErrors(http.StatusBadRequest, ErrInvalidRequestJSONBody), false
+	}
+	<span class="kw">return</span> nil, true
+}</code></pre>
+<p>A trailing variadic parameter keeps each existing call valid. The 11 services call <code>ReadJSONRequestBody</code> 102 times, always with two arguments. No code uses it as a function value, which is the only use that the change can break.</p>
+<p>A test program confirms the request behavior:</p>
+<table>
+  <tr><th>Request body</th><th style="width:210px">Caller options</th><th style="width:220px">Result</th></tr>
+  <tr><td><code>{"Due_Date":"x"}</code></td><td>None</td><td><code>"x"</code> (v1 match without case)</td></tr>
+  <tr><td><code>{"due_date":"a","due_date":"b"}</code></td><td>None</td><td><code>"b"</code> (last value wins)</td></tr>
+  <tr><td>Invalid UTF-8 in <code>due_date</code></td><td>None</td><td>U+FFFD, no error</td></tr>
+  <tr><td><code>{"Due_Date":"x"}</code></td><td><code>MatchCaseInsensitiveNames(false)</code></td><td><code>""</code> (the caller option wins)</td></tr>
+</table>
+
+<h3>2.6 Streamed bodies</h3>
+<ul>
+  <li><strong>Peek.</strong> <code>Flush</code> reads up to 512 bytes into a fixed array in the pooled config, before it commits. A read error here causes the same 500 fallback as in 2.4. (512 bytes is also the size that <code>net/http</code> uses to detect a content type.)</li>
+  <li><strong>Commit and copy.</strong> After a good peek, <code>Flush</code> commits, writes the peeked bytes, and copies the rest.</li>
+  <li><strong>Classify.</strong> A small wrapper on the reader records read errors. After the copy, a recorded read error gives <code>ErrFlushRead</code>. Any other copy error gives <code>ErrFlushWrite</code>.</li>
+  <li><strong>Close.</strong> A deferred call closes <code>config.dataReader</code> if it implements <code>io.Closer</code>. The call runs also when a JSON body or error wins. This fixes G4.</li>
+</ul>
+<p>A read failure after the peek still cuts the body, because the status is already committed. Scuter does not abort the connection. <code>Flush</code> reports and returns <code>ErrFlushRead</code>, and the caller decides what to do.</p>
+
+<h3>2.7 Pool hygiene</h3>
+<p>A <code>release</code> method runs before <code>Put</code>. It does these steps:</p>
+<ul>
+  <li>It sets <code>dataJSON</code> and <code>dataReader</code> to nil.</li>
+  <li>It clears the header operations and the JSON options.</li>
+  <li>It replaces <code>data</code> with a new buffer if the capacity is more than 64 KiB.</li>
+</ul>
+<p>Thus one large response does not keep a large buffer in the pool.</p>
+
+<h3>2.8 Flow inside <code>Flush</code></h3>
+
+<figure>
+<svg viewBox="0 0 780 490" role="img" aria-label="Proposed Flush flow">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b83227"/>
+    </marker>
+  </defs>
+  <style>
+    .box { fill: #f5f7fa; stroke: #4a5568; stroke-width: 1.3; }
+    .boxBad { fill: #fdecea; stroke: #b83227; stroke-width: 1.3; }
+    .boxOk { fill: #e8f4ec; stroke: #2f855a; stroke-width: 1.3; }
+    .t { font: 500 13px 'IBM Plex Sans', sans-serif; fill: #1f2328; text-anchor: middle; dominant-baseline: middle; }
+    .lbl { font: 12px 'IBM Plex Sans', sans-serif; fill: #5b6470; }
+    .lblBad { font: 600 12px 'IBM Plex Sans', sans-serif; fill: #b83227; }
+    .ln { stroke: #4a5568; stroke-width: 1.3; fill: none; }
+    .lnBad { stroke: #b83227; stroke-width: 1.3; fill: none; stroke-dasharray: 5 3; }
+  </style>
+
+  <rect class="box" x="265" y="20" width="250" height="40" rx="6"/>
+  <text class="t" x="390" y="40">Apply options (stage headers)</text>
+  <line class="ln" x1="390" y1="60" x2="390" y2="88" marker-end="url(#arrow)"/>
+  <rect class="box" x="290" y="90" width="200" height="40" rx="6"/>
+  <text class="t" x="390" y="110">Select body source</text>
+
+  <line class="ln" x1="390" y1="130" x2="390" y2="150"/>
+  <line class="ln" x1="95" y1="150" x2="675" y2="150"/>
+  <line class="ln" x1="95" y1="150" x2="95" y2="168" marker-end="url(#arrow)"/>
+  <line class="ln" x1="285" y1="150" x2="285" y2="168" marker-end="url(#arrow)"/>
+  <line class="ln" x1="675" y1="150" x2="675" y2="168" marker-end="url(#arrow)"/>
+  <text class="lbl" x="101" y="163">bytes</text>
+  <text class="lbl" x="291" y="163">JSON</text>
+  <text class="lbl" x="681" y="163">reader</text>
+
+  <rect class="box" x="20" y="170" width="150" height="40" rx="6"/>
+  <text class="t" x="95" y="190">Bytes in buffer</text>
+  <rect class="box" x="190" y="170" width="190" height="40" rx="6"/>
+  <text class="t" x="285" y="190">Encode into buffer</text>
+  <rect class="box" x="590" y="170" width="170" height="40" rx="6"/>
+  <text class="t" x="675" y="190">Peek ≤ 512 bytes</text>
+
+  <path class="lnBad" d="M380,190 L430,190 L430,248" marker-end="url(#arrowRed)"/>
+  <text class="lblBad" x="388" y="182">error</text>
+  <path class="lnBad" d="M590,190 L540,190 L540,248" marker-end="url(#arrowRed)"/>
+  <text class="lblBad" x="548" y="182">error</text>
+
+  <rect class="boxBad" x="400" y="250" width="170" height="50" rx="6"/>
+  <text class="t" x="485" y="267">Fallback: discard headers</text>
+  <text class="t" x="485" y="285">500 + static error JSON</text>
+
+  <line class="ln" x1="95" y1="210" x2="95" y2="338" marker-end="url(#arrow)"/>
+  <line class="ln" x1="285" y1="210" x2="285" y2="338" marker-end="url(#arrow)"/>
+  <text class="lbl" x="291" y="280">ok</text>
+  <line class="ln" x1="485" y1="300" x2="485" y2="338" marker-end="url(#arrow)"/>
+  <line class="ln" x1="675" y1="210" x2="675" y2="338" marker-end="url(#arrow)"/>
+  <text class="lbl" x="681" y="280">ok</text>
+
+  <rect class="boxOk" x="20" y="340" width="550" height="40" rx="6"/>
+  <text class="t" x="295" y="360">Commit (replay headers, write status) · write buffer once</text>
+  <rect class="boxOk" x="590" y="340" width="170" height="40" rx="6"/>
+  <text class="t" x="675" y="360">Commit · write peek · copy</text>
+
+  <line class="ln" x1="295" y1="380" x2="295" y2="428" marker-end="url(#arrow)"/>
+  <line class="ln" x1="675" y1="380" x2="675" y2="428" marker-end="url(#arrow)"/>
+
+  <rect class="box" x="20" y="430" width="740" height="40" rx="6"/>
+  <text class="t" x="390" y="450">Close reader (also if unused) · release refs · report to monitor · return joined error</text>
+</svg>
+<figcaption>Green boxes are the only places where <code>Flush</code> writes headers and the status code. Every failure before that point becomes a clean 500.</figcaption>
+</figure>
+
+<h3>2.9 Code sketch</h3>
+<p>This sketch shows the shape. It is not final code.</p>
+<pre><code><span class="kw">var</span> (
+	ErrFlushEncode = errors.New(<span class="st">"scuter: encode response body"</span>)
+	ErrFlushWrite  = errors.New(<span class="st">"scuter: write response body"</span>)
+	ErrFlushRead   = errors.New(<span class="st">"scuter: read response body source"</span>)
+	ErrFlushClose  = errors.New(<span class="st">"scuter: close response body source"</span>)
+)
+
+<span class="cm">// Flush applies the options, which may be supplied in any order, to the provided ResponseWriter.
+// Flush encodes JSON bodies before it writes headers and the status code. If encoding fails, Flush
+// sends a 500 response with ErrInternalServerError instead. Flush reports all errors it encounters
+// to the nearest monitor (see WrapMonitoring) and also returns them, joined. Each one wraps an
+// ErrFlush* sentinel.</span>
+<span class="kw">func</span> <span class="fn">Flush</span>(response http.ResponseWriter, options ...ResponseOption) (err error) {
+	config := responseConfigs.Get()
+	<span class="kw">defer</span> responseConfigs.Put(config)
+	<span class="kw">defer</span> config.release()
+	<span class="kw">defer</span> <span class="kw">func</span>() { reportFlushError(response, err) }()
+	config.reset()
+	Response.With(options...)(config)
+	<span class="kw">defer</span> <span class="kw">func</span>() { err = errors.Join(err, config.closeReader()) }()
+
+	<span class="kw">switch</span> {
+	<span class="kw">case</span> len(config.jsonErrors.Errors) > 0:
+		err = config.encode(config.jsonErrors)
+	<span class="kw">case</span> config.dataJSON != nil:
+		err = config.encode(config.dataJSON)
+	<span class="kw">case</span> config.dataReader != nil:
+		<span class="kw">return</span> config.stream(response)
+	}
+	<span class="kw">return</span> errors.Join(err, config.writeBuffered(response))
+}
+
+<span class="kw">func</span> (this *responseConfig) <span class="fn">encode</span>(v any) error {
+	this.data.Reset() <span class="cm">// JSON wins over BytesBody</span>
+	err := json.MarshalWrite(&amp;this.data, v, this.jsonOptions...)
+	<span class="kw">if</span> err == nil {
+		<span class="kw">return</span> nil
+	}
+	this.fallback()
+	<span class="kw">return</span> fmt.Errorf(<span class="st">"%w: %w"</span>, ErrFlushEncode, err)
+}
+
+<span class="kw">func</span> (this *responseConfig) <span class="fn">fallback</span>() {
+	this.headers = this.headers[:0]
+	this.setHeader(headerContentType, jsonContentType)
+	this.status = http.StatusInternalServerError
+	this.data.Reset()
+	_, _ = this.data.Write(fallbackBody) <span class="cm">// bytes.Buffer.Write never fails</span>
+}</code></pre>
+<p>The deferred calls run in reverse order. Thus <code>closeReader</code> adds its error first, and <code>reportFlushError</code> then sees the complete error.</p>
+
+<h3>2.10 Behavior before and after</h3>
+<table>
+  <tr><th>Scenario</th><th style="width:220px"><code>v0.6.0</code></th><th style="width:290px"><code>v0.8.0</code></th></tr>
+  <tr><td>A JSON value has NaN, a bad year, or a failing marshaler</td><td><span class="tag bad">200</span> empty body, no record</td><td><span class="tag ok">500</span> fallback JSON; monitor gets <code>ErrFlushEncode</code></td></tr>
+  <tr><td>The same, and an option set <code>Location</code></td><td><span class="tag bad">200</span> with <code>Location</code></td><td><span class="tag ok">500</span> without <code>Location</code></td></tr>
+  <tr><td>A JSON value has invalid UTF-8</td><td>200, U+FFFD in the string</td><td>200, U+FFFD in the string</td></tr>
+  <tr><td>A file read fails on the first read</td><td><span class="tag bad">200</span> empty body</td><td><span class="tag ok">500</span> fallback JSON; monitor gets <code>ErrFlushRead</code></td></tr>
+  <tr><td>A file read fails after 1 MiB</td><td><span class="tag bad">200</span> cut body looks complete</td><td><span class="tag warn">200</span> cut body; monitor gets <code>ErrFlushRead</code></td></tr>
+  <tr><td>The client disconnects during a large write</td><td>No record</td><td><code>Flush</code> returns <code>ErrFlushWrite</code>; monitor gets nothing</td></tr>
+  <tr><td>A handler writes a body on a 204 response</td><td>No record</td><td>Monitor gets <code>ErrFlushWrite</code> (<code>http.ErrBodyNotAllowed</code>)</td></tr>
+  <tr><td>A reader is set, but <code>JSONError</code> wins</td><td>Reader never closed</td><td>Reader closed</td></tr>
+  <tr><td>The reader's <code>Close</code> fails</td><td>No record</td><td>Monitor gets <code>ErrFlushClose</code></td></tr>
+</table>
+<p>The monitor rows apply when the service installs <code>WrapMonitoring</code>.</p>
+
+<h3>2.11 Not included</h3>
+<ul>
+  <li><strong><code>Content-Length</code> on each buffered body.</strong> A known length helps a client detect a cut body. But <code>net/http</code> already sets <code>Content-Length</code> on small bodies (under about 2 KB) when the handler does not flush. A new header on every response also breaks service tests that compare full header sets.</li>
+  <li><strong>An abort of the connection after commit.</strong> Scuter does not call <code>panic(http.ErrAbortHandler)</code>. The caller can act on the returned <code>ErrFlushRead</code>.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="value">3. The role of scuter</h2>
+
+<p>Agents now write most handler code. Plain <code>net/http</code> handlers are an alternative to scuter. Scuter stays, for the reasons below.</p>
+
+<div class="grid2">
+  <div>
+    <h4>Reasons to keep scuter</h4>
+    <ul>
+      <li><strong>One fix, many handlers.</strong> The defects in this proposal sit behind 339 handlers. A new scuter version fixes all of them.</li>
+      <li><strong>Plain handlers repeat the defects.</strong> The most common Go idiom is <code>w.WriteHeader(code)</code> and then <code>json.NewEncoder(w).Encode(v)</code>. This idiom has G1 and G2. Agents learn from that idiom.</li>
+      <li><strong>Review cost stays high.</strong> Agents make code cheap to write. Humans still review, audit, and change that code. A fix in 339 different blocks needs 339 reviews.</li>
+      <li><strong>Agents copy local patterns.</strong> A small, repeated vocabulary gives code with low variance. Low variance makes diffs easy to review.</li>
+      <li><strong>Pure handlers.</strong> The <code>serveHTTP(request) ResponseOption</code> shape keeps handlers free of IO. The <code>sales-context</code> tests use <code>Flush</code> as a test oracle.</li>
+    </ul>
+  </div>
+  <div>
+    <h4>Limits of scuter</h4>
+    <ul>
+      <li><strong>Less typing has no value now.</strong> Helpers that only save keystrokes, such as <code>Response.Header</code> and <code>ContentType</code>, add little. They also cost little.</li>
+      <li><strong>The standard library covers some helpers.</strong> Go 1.22 <code>ServeMux</code> patterns and <code>request.PathValue</code> cover <code>ReadPathElement</code>. This helps only if <code>httprouter</code> supports path values, or the services move to <code>ServeMux</code>.</li>
+      <li><strong>Agents know <code>net/http</code> better.</strong> Training data has much <code>net/http</code> code and no scuter code. But scuter is small, and every repo shows its patterns.</li>
+      <li><strong>A library can hide defects.</strong> G1 is inside scuter. But it is in one place, and one review finds it.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout ok">
+  <strong>Direction.</strong> Scuter is the one place for the rules that each HTTP response must follow. It owns the response commit, the request decode, the error document, and the test helpers. A separate change can remove helpers that the standard library covers.
+</div>
+
+<!-- ============================================================ -->
+<h2 id="tradeoffs">4. Trade-offs</h2>
+<ul>
+  <li><strong>A service without <code>WrapMonitoring</code> still loses errors.</strong> Existing call sites compile without change and ignore the return value. Only a service that installs a monitor gets reports.</li>
+  <li><strong>Two report paths.</strong> A call site that checks the return value, in a service with a monitor, reports the error two times. The README must say: use the monitor for reports, and use the return value only to act on the error.</li>
+  <li><strong>The <code>monitor</code> interface is unexported.</strong> The documentation for <code>WrapMonitoring</code> shows the parameter type <code>monitor</code>, which callers cannot name. The README and the doc comment must list the method set.</li>
+  <li><strong>A new interface method breaks monitors.</strong> When <code>monitor</code> gets a method, each service's monitor type stops compiling until it adds that method. This is acceptable at v0.</li>
+  <li><strong>The disconnect filter depends on <code>net/http</code>.</strong> It uses the context cancellation that <code>net/http</code> does on a failed connection write. A different server, or a wrapper that replaces the request context, can change this.</li>
+  <li><strong>The wrapper hides optional interfaces.</strong> A direct type assertion such as <code>w.(http.Flusher)</code> fails on a <code>monitoredWriter</code>. <code>http.ResponseController</code> works because of <code>Unwrap</code>. No service has such a direct assertion.</li>
+  <li><strong>One allocation per request.</strong> <code>WrapMonitoring</code> allocates one <code>monitoredWriter</code> for each request. A pool can remove this, if a profile shows a need.</li>
+  <li><strong>No test in each service proves the wiring.</strong> Scuter's tests cover <code>WrapMonitoring</code>. In each service, a reviewer confirms the wiring by reading the diff.</li>
+  <li><strong>The v1 defaults keep the v1 weaknesses.</strong> Invalid UTF-8 is silently replaced in both directions. Request names match without case, and a duplicate name silently replaces the earlier value. A service can change each of these with <code>Response.JSONOptions</code> or the options of <code>ReadJSONRequestBody</code>.</li>
+  <li><strong>More memory for large JSON bodies.</strong> The full encoded body stays in memory until the write. The 64 KiB retention limit keeps the pool small, but the peak memory for one request is the body size.</li>
+  <li><strong>No <code>sendfile</code> for <code>*os.File</code> bodies.</strong> The peek and the read-recording wrapper hide the concrete file type from <code>net/http</code>. The server then copies through user space. This matters only for large file downloads.</li>
+  <li><strong>The fallback body is fixed.</strong> The caller cannot choose a different error for the fallback.</li>
+  <li><strong>Joined errors have more than one line.</strong> <code>errors.Join</code> puts a newline between errors. Single-line log formats show this as a line break.</li>
+</ul>
+
+<h3>Out of scope</h3>
+<ul>
+  <li><code>Response.ContentType</code> records an add action. Two calls give two <code>Content-Type</code> values. <code>JSONBody</code> records a set action.</li>
+  <li><code>Response.StatusCode(0)</code> or another invalid code makes <code>net/http</code> panic in <code>WriteHeader</code>.</li>
+  <li>A move of the services to the json/v2 default wire format.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="checklist">5. Implementation checklist</h2>
+<p>Each phase uses a red/green TDD cycle. Tests go in <code>response_test.go</code>, <code>request_test.go</code>, or a new <code>monitor_test.go</code> (package <code>scuter</code>). Tests use <code>internal/should</code>.</p>
+
+<div class="phase">
+  <h3>Phase 0 — Baseline</h3>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code> in the repo root. Confirm that all tests pass.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code> in <code>example/</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 1 — <code>Flush</code> returns an error</h3>
+  <p class="goal">Starts the fix for G2. Adds the sentinel errors and the write-error path.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add a <code>failingWriter</code> test type. It embeds <code>*httptest.ResponseRecorder</code>, and its <code>Write</code> returns a fixed error.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBytesBody_WriteError</code>. Assert that the error wraps <code>ErrFlushWrite</code> and the fixed error.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Change the existing tests to capture the result of <code>Flush</code> and assert <code>should.BeNil</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm a compile failure: <code>Flush</code> has no result, and <code>ErrFlushWrite</code> is undefined.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Declare the four <code>ErrFlush*</code> sentinel errors in <code>response.go</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Change <code>Flush</code> to return <code>error</code>. Wrap the buffered write error with <code>ErrFlushWrite</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Rewrite the <code>Flush</code> doc comment. Remove the "silently ignored" note.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 2 — Header staging</h3>
+  <p class="goal">Stages header operations until commit. The success path keeps the same result, so this phase is a refactor under characterization tests.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">TEST</span>Add <code>TestResponseHeader_AddsToMiddlewareValue</code>. Set <code>Vary: Origin</code> on the recorder, then flush <code>Header("Vary", "Accept")</code>.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>In that test, assert that <code>Vary</code> has both values, in order.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>Add <code>TestResponseJSONBody_ReplacesMiddlewareContentType</code>. Set <code>Content-Type: text/plain</code> on the recorder, then flush a <code>JSONBody</code>.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>In that test, assert that <code>Content-Type</code> has only the JSON value.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the new tests pass. (They describe the current behavior.)</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Add the <code>headerOperation</code> type and a <code>headers</code> slice to <code>responseConfig</code>.</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Add <code>addHeader</code> and <code>setHeader</code> methods that append operations.</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Change <code>Header</code>, <code>ContentType</code>, and <code>JSONContentType</code> to call <code>addHeader</code>.</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Change <code>JSONBody</code>, <code>JSONError</code>, <code>JSONErrors</code>, and <code>BodyWithAttachment</code> to call <code>setHeader</code>.</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Add <code>commit(response)</code>. It replays the operations, then calls <code>WriteHeader</code>. Call it in place of <code>WriteHeader</code>.</li>
+    <li><input type="checkbox"> <span class="step ref">REFACTOR</span>Remove the <code>header</code> field. Change <code>reset</code> so that it takes no argument.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 3 — Encode JSON before commit</h3>
+  <p class="goal">Fixes G1. Adds the 500 fallback.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONBody_EncodeError</code>. Set <code>X-Request-Id</code> on the recorder before the flush.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, flush <code>StatusCode(201)</code>, <code>Header("Location", "/tasks/1")</code>, and a JSON body with <code>math.NaN()</code> after another field.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert status 500, a JSON <code>Content-Type</code>, and the encoded <code>ErrInternalServerError</code> body.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert that <code>Location</code> is absent and that <code>X-Request-Id</code> is present.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert that the error wraps <code>ErrFlushEncode</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the test fails: status is 201, and the body is partial.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add a package variable <code>fallbackBody</code>. Compute it at initialization from <code>NewErrors(ErrInternalServerError)</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>responseConfig.fallback()</code>. It discards staged headers, stages a JSON <code>Content-Type</code>, and sets status 500.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>fallback()</code>, replace the buffer contents with <code>fallbackBody</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>responseConfig.encode(v any) error</code>. It resets <code>data</code>, encodes into it, and calls <code>fallback()</code> on error.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>responseConfig.writeBuffered(response) error</code>. It calls <code>commit</code>, then writes the buffer one time.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Send <code>jsonErrors</code>, <code>dataJSON</code>, and bytes bodies through <code>encode</code> and <code>writeBuffered</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>Add <code>TestResponseJSONBody_WinsOverBytesBody</code>. Assert that the body holds only the JSON. This test protects the body priority.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the new test passes. (It describes the current behavior.)</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 4 — Reader errors and close</h3>
+  <p class="goal">Fixes G4 and continues G2 for streamed bodies.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add a <code>failAfterReader</code> test type. It returns all its data, then a fixed error instead of <code>io.EOF</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBodyFromReader_ReadErrorAfterCommit</code>. Use 1 KiB of data. Assert status 200, the full data, and <code>ErrFlushRead</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBodyFromReader_WriteError</code>. Use <code>failingWriter</code>. Assert <code>ErrFlushWrite</code> and not <code>ErrFlushRead</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBodyFromReader_CloseError</code>. Set <code>Closer.closeErr</code>. Assert the body and <code>ErrFlushClose</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBodyFromReader_ClosedWhenUnused</code>. Use a <code>Closer</code> and <code>JSONError</code>. Assert <code>closed == 1</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm failures: the errors are nil, and <code>closed</code> is 0.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add a <code>readRecorder</code> type. It wraps an <code>io.Reader</code> and keeps the first error that is not <code>io.EOF</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>responseConfig.stream(response) error</code>. It calls <code>commit</code> and copies through a <code>readRecorder</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>stream</code>, wrap a recorded read error with <code>ErrFlushRead</code>. Wrap other copy errors with <code>ErrFlushWrite</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>responseConfig.closeReader() error</code>. Defer it in <code>Flush</code> for every <code>dataReader</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Delete <code>writeFromReader</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 5 — Peek before commit</h3>
+  <p class="goal">Fixes G3 for first-read failures.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseBodyWithAttachment_ReadErrorBeforeCommit</code>. Use the existing <code>Reader</code> type with <code>readErr</code> set.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert status 500, the fallback body, and a JSON <code>Content-Type</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert that <code>Content-Disposition</code> is absent and that the error wraps <code>ErrFlushRead</code>.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>Add <code>TestResponseBodyFromReader_LargeBody</code>. Use 64 KiB of data. Assert that the body is identical.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the first test fails with status 200. The second test can pass already.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add a <code>peek [512]byte</code> field to <code>responseConfig</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>stream</code>, fill <code>peek</code> with <code>io.ReadFull</code>. Accept <code>io.EOF</code> and <code>io.ErrUnexpectedEOF</code> as a short body.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>On any other peek error, call <code>fallback()</code> and <code>writeBuffered</code>. Return the error wrapped with <code>ErrFlushRead</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>After a good peek, commit and write the peeked bytes. Copy the rest only if the peek did not reach the end.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 6 — Pool hygiene</h3>
+  <p class="goal">Fixes G5.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseConfigRelease</code>. Set <code>dataJSON</code>, <code>dataReader</code>, and one header operation. Grow <code>data</code> to 1 MiB.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, call <code>release()</code>. Assert nil references, no header operations, and a <code>data</code> capacity of at most 64 KiB.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm a compile failure: <code>release</code> is undefined.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>maxRetainedBufferSize = 64 &lt;&lt; 10</code> and the <code>release()</code> method.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Defer <code>config.release()</code> in <code>Flush</code>, after the deferred <code>Put</code>, so it runs first.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 7 — <code>WrapMonitoring</code></h3>
+  <p class="goal">Finishes G2. Reports <code>Flush</code> errors with no change to call sites. Tests go in <code>monitor_test.go</code> and use a fake monitor that records each call.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_ReportsFlushError</code>. The inner handler flushes a JSON body that contains <code>math.NaN()</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, wrap the handler with <code>WrapMonitoring</code> and the fake monitor. Serve one request with <code>httptest</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert one report. Assert that the error wraps <code>ErrFlushEncode</code>, and that the request is the served request.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_NoErrorNoReport</code>. The inner handler flushes a valid JSON body. Assert zero reports.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_FoundThroughUnwrap</code>. Put a test middleware with its own writer type and <code>Unwrap</code> between them.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert one report.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_ResponseControllerStillWorks</code>. The inner handler calls <code>http.NewResponseController(response).Flush()</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert no error and <code>recorder.Flushed == true</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_NilMonitor</code>. Assert that <code>WrapMonitoring(next, nil)</code> returns <code>next</code>. Use a pointer handler type for the comparison.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm a compile failure: <code>WrapMonitoring</code> is undefined.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>monitor.go</code> with the <code>monitor</code> interface and its <code>FlushFailed</code> method.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>monitor.go</code>, add <code>WrapMonitoring</code>, <code>monitoredWriter</code>, and its <code>Unwrap</code> method.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>reportFlushError</code>. It walks the <code>Unwrap</code> chain to the nearest <code>monitoredWriter</code> and calls <code>report</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>Flush</code>, defer <code>reportFlushError</code> so that it runs after <code>closeReader</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+
+  <h4>Client disconnects</h4>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_DropsClientDisconnect</code>. Use a request with a canceled context and a <code>failingWriter</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert zero reports. Assert that the inner handler's <code>Flush</code> result wraps <code>ErrFlushWrite</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_ReportsWriteErrorWithLiveContext</code>. Use a live context and a <code>failingWriter</code>. Assert one report.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestWrapMonitoring_KeepsOtherErrorsOnDisconnect</code>. Use a canceled context, a <code>failingWriter</code>, and a <code>Closer</code> with <code>closeErr</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert one report that wraps <code>ErrFlushClose</code> and does not wrap <code>ErrFlushWrite</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the first and third tests fail, because the monitor gets the write errors.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>withoutDisconnects(request, err) error</code>. If the context is canceled, remove each <code>ErrFlushWrite</code> part.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>monitoredWriter.report</code>, call <code>withoutDisconnects</code>. Skip the monitor when the result is nil.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>Add <code>TestWrapMonitoring_ReportsJoinedCloseError</code>. Use a <code>Closer</code> with <code>closeErr</code> and a <code>JSONError</code> body.</li>
+    <li><input type="checkbox"> <span class="step red">TEST</span>In that test, assert that the reported error wraps <code>ErrFlushClose</code>. This test protects the defer order.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that the test passes. If it fails, fix the defer order in <code>Flush</code>.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 8 — JSON options</h3>
+  <p class="goal">Adds <code>Response.JSONOptions</code> and the options parameter of <code>ReadJSONRequestBody</code>, each with the v1 defaults first.</p>
+  <h4>Responses</h4>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONBody_V1WireFormatByDefault</code>. Use a zero struct with an <code>omitempty</code> number and a nil slice.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert the trimmed body <code>{"tags":null}</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONBody_InvalidUTF8ReplacedByDefault</code>. Use the string <code>"Jos\xc3"</code>. Assert status 200, U+FFFD in the body, and no error.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONOptions_OverrideDefaults</code>. Use the same struct and <code>JSONOptions(json.FormatNilSliceAsNull(false))</code>. Assert <code>{"tags":[]}</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONOptions_BeforeJSONBody</code>. Put <code>JSONOptions</code> before <code>JSONBody</code> in the option list. Assert that the options apply.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestResponseJSONOptions_LaterWins</code>. Call <code>JSONOptions</code> two times with opposite values. Assert that the second value applies.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm a compile failure: <code>JSONOptions</code> is undefined.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add the package variable <code>defaultJSONOptions = jsonv1.DefaultOptionsV1()</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add a <code>jsonOptions</code> slice to <code>responseConfig</code>. In <code>reset</code>, set it to hold only <code>defaultJSONOptions</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add <code>Response.JSONOptions</code>. It appends its values to <code>config.jsonOptions</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>In <code>encode</code>, pass <code>this.jsonOptions...</code> to <code>MarshalWrite</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Compute <code>fallbackBody</code> with <code>defaultJSONOptions</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+  </ul>
+
+  <h4>Requests</h4>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestReadJSONRequestBody_CaseInsensitiveNamesByDefault</code>. Send <code>{"Due_Date":"x"}</code>. Assert success and <code>"x"</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestReadJSONRequestBody_DuplicateNamesByDefault</code>. Send the same name two times. Assert success and the last value.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestReadJSONRequestBody_InvalidUTF8ReplacedByDefault</code>. Send invalid UTF-8 in a string. Assert success and U+FFFD.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>Add <code>TestReadJSONRequestBody_OptionsOverrideDefaults</code>. Send <code>{"Due_Date":"x"}</code> with <code>json.MatchCaseInsensitiveNames(false)</code>.</li>
+    <li><input type="checkbox"> <span class="step red">RED</span>In that test, assert success and an empty field.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm a compile failure: <code>ReadJSONRequestBody</code> takes only two arguments.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add the <code>options ...json.Options</code> parameter to <code>ReadJSONRequestBody</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Pass <code>defaultJSONOptions</code> and <code>json.JoinOptions(options...)</code> to <code>UnmarshalRead</code>.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Update the doc comment of <code>ReadJSONRequestBody</code>. State the defaults and the override order.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code> in <code>example/</code>. Confirm that the existing two-argument call still compiles.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 9 — Example and documentation</h3>
+  <p class="goal">Shows how to wire in monitoring: a monitor at the router, no change in the handlers.</p>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In <code>example/internal/http/http.go</code>, add a small monitor type. Its <code>FlushFailed</code> method calls <code>logger.Printf</code>.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In <code>New</code>, wrap the router with <code>scuter.WrapMonitoring</code> and that monitor.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>Keep the example handlers as they are. They show that call sites do not change.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>Add a "Reporting Flush errors" section to <code>README.md</code>. Show the monitor type and the <code>WrapMonitoring</code> call.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In that section, list the method set of the <code>monitor</code> interface.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In that section, add the sentinel table. State that the monitor does not get client disconnects.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In that section, say to use the return value only to act on an error, not to log it.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>Add a "JSON options" section to <code>README.md</code>. State the library defaults and how <code>JSONOptions</code> overrides them.</li>
+    <li><input type="checkbox"> <span class="step doc">DOC</span>In that section, show the options parameter of <code>ReadJSONRequestBody</code>. State that it has the same defaults.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code> in <code>example/</code>. Confirm that all tests pass.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 10 — Final check and release</h3>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make build</code> in the repo root. Confirm that it passes.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Read the full diff. Confirm the house style: <code>this</code> receivers, named results, no naked returns.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Confirm that <code>response.go</code> discards no encode, write, read, or close errors. (<code>bytes.Buffer.Write</code> never fails, so those discards can stay.)</li>
+    <li><input type="checkbox"> <span class="step ship">SHIP</span>Mike merges the branch to <code>master</code>.</li>
+    <li><input type="checkbox"> <span class="step ship">SHIP</span>Mike tags and pushes <code>v0.8.0</code>.</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 11 — Rollout to the services</h3>
+  <p class="goal">Upgrades each service and installs a monitor. Use one branch and one pull request per repo.</p>
+
+  <h4>Steps for each repo</h4>
+  <ul class="check">
+    <li><input type="checkbox"> <span class="step ship">SHIP</span>Change <code>go.mod</code> from <code>v0.6.0</code> to <code>github.com/smarty/scuter v0.8.0</code>. Run <code>go mod tidy</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Record the tests that fail because of the 500 fallback or the missing newline after a body.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Update those tests to expect the new behavior. Do not change production code for them.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>Add a monitor type with a <code>FlushFailed</code> method. Use the logger or metrics that the composition root already has.</li>
+    <li><input type="checkbox"> <span class="step green">GREEN</span>At each router site, wrap the outermost router handler with <code>scuter.WrapMonitoring</code>.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Run <code>make test</code>. Confirm that all tests pass.</li>
+    <li><input type="checkbox"> <span class="step run">RUN</span>Confirm that the diff has no changes to handler files.</li>
+  </ul>
+
+  <h4>Repos</h4>
+  <ul class="check">
+    <li><input type="checkbox"> <code>subscription-context</code> — <code>http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>security-context</code> — <code>auth-server/http/http.go</code>, <code>http/oauth/1_http_routes.go</code>, <code>http/api/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>authorization-context</code> — <code>http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>sales-context</code> — <code>code/http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>identity-context</code> — <code>http/filtered/1_http_routes.go</code>, <code>http/api/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>notification-context</code> — <code>code/http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>payment-context</code> — <code>code/http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>reporting-context</code> — find the router site first</li>
+    <li><input type="checkbox"> <code>billing-context</code> — <code>code/http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>platform-context</code> — <code>code/http/1_http_routes.go</code></li>
+    <li><input type="checkbox"> <code>deployment-context</code> — find the router site first</li>
+  </ul>
+</div>
+
+</main>
+</body>
+</html>
